@@ -1,5 +1,6 @@
 import { window, Range, type Position } from 'vscode'
 import { parser } from 'posthtml-parser'
+import { tokenize, constructTree } from 'hyntax'
 
 // 等待editor.selection修改完成
 export function waitSelectionChange() {
@@ -106,4 +107,24 @@ export function getNowHtmlTagRange() {
     break
   } while (true)
   return new Range(beforePosition, afterPosition)
+}
+
+// 获取html标签的ast语法树
+export function getHtmlAst(tag: string) {
+  const ast: any = constructTree(tokenize(tag).tokens).ast.content.children[0].content
+  ast.openStart._content = ast.openStart.content.trim()
+  ast.openEnd._content = ast.openEnd.content.trim()
+  ast._attributes = ast.attributes.flatMap((attr: any) => {
+    let _assembly = attr.key.content
+    if (attr.value) {
+      _assembly += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
+    }
+    _assembly = _assembly.trim()
+    return _assembly ? [{
+      ...attr,
+      _assembly,
+      _endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
+    }] : []
+  })
+  return ast
 }

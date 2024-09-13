@@ -20,6 +20,16 @@
         "key": "ctrl+shift+a",
         "command": "dawn-tools.html.format",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+shift+c",
+        "command": "dawn-tools.html.attr.copy",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+shift+d",
+        "command": "dawn-tools.html.attr.delete",
+        "when": "editorTextFocus"
       }
     ]
   },

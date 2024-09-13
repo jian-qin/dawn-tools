@@ -1,6 +1,5 @@
-import { commands, window, Selection } from 'vscode'
-import { getNowHtmlTagRange, getIndentationMode } from './tools'
-import { tokenize, constructTree } from 'hyntax'
+import { commands, window, Selection, env } from 'vscode'
+import { getNowHtmlTagRange, getIndentationMode, getHtmlAst } from './tools'
 
 // 格式化选中html代码片段（自动选中光标所在html）
 commands.registerCommand("dawn-tools.html.format", async () => {
@@ -8,20 +7,10 @@ commands.registerCommand("dawn-tools.html.format", async () => {
   if (!newRange) return
   const editor = window.activeTextEditor!
   const tag = editor.document.getText(newRange)
-  const ast = constructTree(tokenize(tag).tokens).ast.content.children[0].content as any
-  console.log(ast)
-  let newTag = ast.openStart.content.trim()
-  const end = ast.openEnd.content.trim()
+  const ast = getHtmlAst(tag)
+  let newTag = ast.openStart._content
+  const end = ast.openEnd._content
   const tab = getIndentationMode().tab
-  // 获取属性字符串
-  const attrs = ast.attributes.flatMap((attr: any) => {
-    let attrStr = attr.key.content
-    if (attr.value) {
-      attrStr += `=${attr.startWrapper.content}${attr.value.content}${attr.endWrapper.content}`
-    }
-    attrStr = attrStr.trim()
-    return attrStr ? [attrStr] : []
-  }) as string[]
   // 判断是否需要换行
   const firstAttr = ast.attributes.find((attr: any) => attr.key.content.trim())
   const firstAttrLine = editor.document.positionAt(editor.document.offsetAt(newRange.start) + firstAttr.key.startPosition + 1).line
@@ -30,10 +19,10 @@ commands.registerCommand("dawn-tools.html.format", async () => {
     const line = editor.document.lineAt(newRange.start.line)
     const baseTab = line.text.substring(0, line.firstNonWhitespaceCharacterIndex)
     const attrTab = `\n${baseTab}${tab}`
-    const attrStr = attrs.map(attr => attr.replaceAll('\n', `\n${tab}`)).join(attrTab)
+    const attrStr = ast._attributes.map((attr: any) => attr._assembly.replaceAll('\n', `\n${tab}`)).join(attrTab)
     newTag += `${attrTab}${attrStr}\n${baseTab}${end}`
   } else {
-    const attrStr = attrs.map(attr => attr.replaceAll(`\n${tab}`, '\n')).join(' ')
+    const attrStr = ast._attributes.map((attr: any) => attr._assembly.replaceAll(`\n${tab}`, '\n')).join(' ')
     newTag += ` ${attrStr}${end[0] === '/' ? ' ' : ''}${end}`
   }
   // 设置新的标签
@@ -42,4 +31,34 @@ commands.registerCommand("dawn-tools.html.format", async () => {
   })
   // 选中新的标签
   editor.selection = new Selection(newRange.start, getNowHtmlTagRange()!.end)
+})
+
+// 复制光标所在标签的属性
+commands.registerCommand("dawn-tools.html.attr.copy", async () => {
+  const newRange = getNowHtmlTagRange()
+  if (!newRange) return
+  const editor = window.activeTextEditor!
+  const tag = editor.document.getText(newRange)
+  const ast = getHtmlAst(tag)
+  const startIndex = editor.document.offsetAt(editor.selection.start) - editor.document.offsetAt(newRange.start)
+  const offsets: number[] = ast._attributes.map((attr: any) => Math.min(
+    Math.abs(startIndex - attr.key.startPosition),
+    Math.abs(startIndex - attr._endPosition),
+  ))
+  const attr = ast._attributes[offsets.indexOf(Math.min(...offsets))]
+  const beforeGap = tag.substring(0, attr.key.startPosition).match(/\s+$/)![0]
+  env.clipboard.writeText(beforeGap + attr._assembly)
+  editor.selection = new Selection(
+    editor.document.positionAt(editor.document.offsetAt(newRange.start) + attr.key.startPosition - beforeGap.length),
+    editor.document.positionAt(editor.document.offsetAt(newRange.start) + attr._endPosition + 1)
+  )
+  return true
+})
+
+// 删除光标所在标签的属性
+commands.registerCommand("dawn-tools.html.attr.delete", async () => {
+  const isCopy = await commands.executeCommand('dawn-tools.html.attr.copy')
+  if (!isCopy) return
+  await commands.executeCommand('deleteLeft')
+  return true
 })
