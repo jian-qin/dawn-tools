@@ -35,6 +35,11 @@
         "key": "ctrl+shift+v",
         "command": "dawn-tools.html.attr.paste",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "alt+l",
+        "command": "dawn-tools.snippets.log",
+        "when": "editorTextFocus"
       }
     ]
   },
