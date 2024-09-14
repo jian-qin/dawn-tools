@@ -30,6 +30,11 @@
         "key": "ctrl+shift+d",
         "command": "dawn-tools.html.attr.delete",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+shift+v",
+        "command": "dawn-tools.html.attr.paste",
+        "when": "editorTextFocus"
       }
     ]
   },
