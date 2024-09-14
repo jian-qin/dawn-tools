@@ -40,6 +40,11 @@
         "key": "alt+l",
         "command": "dawn-tools.snippets.log",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+alt+l",
+        "command": "dawn-tools.snippets.log.before",
+        "when": "editorTextFocus"
       }
     ]
   },

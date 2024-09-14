@@ -1,4 +1,4 @@
-import { window, Range, type Position } from 'vscode'
+import { window, Range, Position } from 'vscode'
 import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
 

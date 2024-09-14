@@ -1,7 +1,9 @@
 import { commands, window, env, Selection } from 'vscode'
+import { waitSelectionChange } from './tools'
+import { selectionsHistory } from './store'
 
 // 插入console.log
-commands.registerCommand("dawn-tools.snippets.log", async () => {
+commands.registerCommand("dawn-tools.snippets.log", async (editSelection?: Selection) => {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
   let text = ''
@@ -9,6 +11,11 @@ commands.registerCommand("dawn-tools.snippets.log", async () => {
   editor.selection.isEmpty && await commands.executeCommand('editor.action.addSelectionToNextFindMatch')
   text = editor.selection.isEmpty ? await env.clipboard.readText() : editor.document.getText(editor.selection)
   text = text.trim()
+  // 插入位置是否指定
+  if (editSelection) {
+    editor.selection = editSelection
+    await waitSelectionChange()
+  }
   // 当前行是否为空行
   const isEmptyLine = editor.document.lineAt(editor.selection.start.line).isEmptyOrWhitespace
   if (!isEmptyLine) {
@@ -20,4 +27,16 @@ commands.registerCommand("dawn-tools.snippets.log", async () => {
     editor.document.positionAt(editor.document.offsetAt(endPosition) - text.length),
     endPosition,
   )
+})
+
+// 插入console.log - 使用上一次光标位置的单词
+commands.registerCommand("dawn-tools.snippets.log.before", async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  const beforeSelection = selectionsHistory.at(-2)?.[0]
+  if (!beforeSelection) return
+  const currentSelection = selectionsHistory.at(-1)![0]
+  editor.selection = beforeSelection
+  await waitSelectionChange()
+  await commands.executeCommand('dawn-tools.snippets.log', currentSelection)
 })
