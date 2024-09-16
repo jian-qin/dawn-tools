@@ -1,4 +1,14 @@
-import { commands, window, Range } from 'vscode'
+import { commands, window, Range, env } from 'vscode'
+
+// 特殊粘贴
+commands.registerCommand("dawn-tools.other.paste", async () => {
+  const text = (await env.clipboard.readText()).trim()
+  if (text.startsWith('.') || text.startsWith('/')) {
+    await commands.executeCommand('dawn-tools.file.copy.path.paste')
+  } else {
+    await commands.executeCommand('dawn-tools.html.attr.paste')
+  }
+})
 
 const symbol_map = {
   '·': '`',

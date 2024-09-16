@@ -1,4 +1,4 @@
-import { window, Range, Position } from 'vscode'
+import { window, Range, Position, workspace } from 'vscode'
 import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
 
@@ -15,6 +15,24 @@ export function waitSelectionChange() {
 // 格式化文件路径（统一斜杠、大小写盘符、去除盘符前的斜杠）
 export function formatFilePath(path: string) {
   return path.replace(/\\/g, '/').replace(/^\/([a-z]:)/, '$1').replace(/^[a-z]:/, $0 => $0.toUpperCase())
+}
+
+// 获取文件对应的根目录
+export function getRootPath(path: string) {
+  path = formatFilePath(path)
+  const roots = workspace.workspaceFolders!.map(root => formatFilePath(root.uri.path))
+  return roots.find(root => path.startsWith(root))!
+}
+
+// 获取文件路径中的文件名
+export function getFileName(path: string) {
+  const result = formatFilePath(path).split('/')
+  let name = result.at(-1)?.replace(/(.+)\..*/, '$1')
+  // 特殊名称过滤
+  if (name === 'index') {
+    name = result.at(-2)
+  }
+  return name
 }
 
 // 获取当前文件的缩进模式

@@ -17,44 +17,54 @@
   "contributes": {
     "commands": [
       {
-        "command": "dawn-tools.file.name.copy",
+        "command": "dawn-tools.file.copy.name",
         "title": "复制文件名"
       },
       {
-        "command": "dawn-tools.file.import.path.relative",
-        "title": "引入相对路径"
+        "command": "dawn-tools.file.copy.path.relative",
+        "title": "复制相对路径"
       },
       {
-        "command": "dawn-tools.file.import.path.absolute",
-        "title": "引入绝对路径"
+        "command": "dawn-tools.file.copy.path.absolute",
+        "title": "复制绝对路径"
+      },
+      {
+        "command": "dawn-tools.html.attr.paste",
+        "when": "editorTextFocus",
+        "title": "粘贴光标所在标签的属性"
+      },
+      {
+        "command": "dawn-tools.file.copy.path.paste",
+        "when": "editorTextFocus",
+        "title": "粘贴复制的路径"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "dawn-tools.file.name.copy",
+          "command": "dawn-tools.file.copy.name",
           "group": "0_0@1"
         },
         {
-          "command": "dawn-tools.file.import.path.relative",
+          "command": "dawn-tools.file.copy.path.relative",
           "group": "0_0@2"
         },
         {
-          "command": "dawn-tools.file.import.path.absolute",
+          "command": "dawn-tools.file.copy.path.absolute",
           "group": "0_0@3"
         }
       ],
       "editor/title/context": [
         {
-          "command": "dawn-tools.file.name.copy",
+          "command": "dawn-tools.file.copy.name",
           "group": "1_cm@1"
         },
         {
-          "command": "dawn-tools.file.import.path.relative",
+          "command": "dawn-tools.file.copy.path.relative",
           "group": "1_cm@2"
         },
         {
-          "command": "dawn-tools.file.import.path.absolute",
+          "command": "dawn-tools.file.copy.path.absolute",
           "group": "1_cm@3"
         }
       ]
@@ -77,7 +87,7 @@
       },
       {
         "key": "ctrl+shift+v",
-        "command": "dawn-tools.html.attr.paste",
+        "command": "dawn-tools.other.paste",
         "when": "editorTextFocus"
       },
       {
