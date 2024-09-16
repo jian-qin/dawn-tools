@@ -15,6 +15,50 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "dawn-tools.file.name.copy",
+        "title": "复制文件名"
+      },
+      {
+        "command": "dawn-tools.file.import.path.relative",
+        "title": "引入相对路径"
+      },
+      {
+        "command": "dawn-tools.file.import.path.absolute",
+        "title": "引入绝对路径"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "dawn-tools.file.name.copy",
+          "group": "0_0@1"
+        },
+        {
+          "command": "dawn-tools.file.import.path.relative",
+          "group": "0_0@2"
+        },
+        {
+          "command": "dawn-tools.file.import.path.absolute",
+          "group": "0_0@3"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "dawn-tools.file.name.copy",
+          "group": "1_cm@1"
+        },
+        {
+          "command": "dawn-tools.file.import.path.relative",
+          "group": "1_cm@2"
+        },
+        {
+          "command": "dawn-tools.file.import.path.absolute",
+          "group": "1_cm@3"
+        }
+      ]
+    },
     "keybindings": [
       {
         "key": "ctrl+shift+a",

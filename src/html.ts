@@ -44,7 +44,7 @@ commands.registerCommand("dawn-tools.html.attr.copy", async () => {
   const attr = getNearHtmlAttr(tagRange)?.attr
   if (!attr) return false
   const beforeGap = tag.substring(0, attr.key.startPosition).match(/\s+$/)?.[0] || ''
-  env.clipboard.writeText(beforeGap + attr._assembly)
+  await env.clipboard.writeText(beforeGap + attr._assembly)
   editor.selection = new Selection(
     editor.document.positionAt(editor.document.offsetAt(tagRange.start) + attr.key.startPosition - beforeGap.length),
     editor.document.positionAt(editor.document.offsetAt(tagRange.start) + attr._endPositionTrim + 1)

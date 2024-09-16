@@ -1,4 +1,5 @@
 import './store'
+import './file'
 import './other'
 import './html'
 import './snippets'
