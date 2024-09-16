@@ -9,6 +9,28 @@ commands.registerCommand("dawn-tools.file.copy.name", async (file) => {
   return name
 })
 
+// 复制相对路径
+commands.registerCommand("dawn-tools.file.copy.path.relative", async (file) => {
+  const editor = window.activeTextEditor
+  if (!editor) return
+  const currentPath = formatFilePath(editor.document.uri.path)
+  const targetPath = formatFilePath(file.path)
+  let currentArr = currentPath.split('/')
+  let targetArr = targetPath.split('/')
+  currentArr.some((item, index) => {
+    if (item !== targetArr[index]) {
+      currentArr = currentArr.slice(index)
+      targetArr = targetArr.slice(index)
+      return true
+    }
+  })
+  let path = ''
+  path += currentArr.length === 1 ? './' : '../'.repeat(currentArr.length - 1)
+  path += targetArr.join('/')
+  await env.clipboard.writeText(path)
+  return path
+})
+
 // 复制绝对路径
 commands.registerCommand("dawn-tools.file.copy.path.absolute", async (file) => {
   const rootPath = getRootPath(file.path)
