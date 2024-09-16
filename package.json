@@ -37,13 +37,18 @@
         "when": "editorTextFocus"
       },
       {
-        "key": "alt+l",
+        "key": "alt+q",
         "command": "dawn-tools.snippets.log",
         "when": "editorTextFocus"
       },
       {
-        "key": "ctrl+alt+l",
+        "key": "shift+alt+q",
         "command": "dawn-tools.snippets.log.before",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "alt+oem_2",
+        "command": "dawn-tools.other.symbol",
         "when": "editorTextFocus"
       }
     ]
