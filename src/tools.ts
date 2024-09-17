@@ -178,3 +178,31 @@ export function getNearHtmlAttr(
     attr: ast._attributes[offsets.indexOf(Math.min(...offsets))],
   }
 }
+
+// 正则匹配光标最近的匹配项
+export function getNearMatch(reg: RegExp) {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  const position = editor.selection.end
+  const range = new Range(
+    position.line && position.line - 1, 0,
+    position.line + 2, 0,
+  )
+  const text = editor.document.getText(range)
+  const matchs = [...text.matchAll(reg)]
+  if (!matchs.length) return
+  // 距离最近的单词
+  const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(range.start)
+  const indexs = matchs.map(item => Math.min(Math.abs(startIndex - item.index), Math.abs(startIndex - item.index - item[0].length)))
+  const match = matchs[indexs.indexOf(Math.min(...indexs))]
+  // 删除
+  const startPosition = editor.document.positionAt(editor.document.offsetAt(range.start) + match.index)
+  return {
+    value: match[0],
+    startPosition,
+    range: new Range(
+      startPosition,
+      startPosition.translate(0, match[0].length),
+    ),
+  }
+}
