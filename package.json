@@ -1,7 +1,7 @@
 {
   "name": "dawn-tools",
-  "displayName": "Dawn Tools",
-  "description": "Dawn Tools",
+  "displayName": "Dawn Tool Set",
+  "description": "Dawn Tool Set",
   "publisher": "jian-qin",
   "version": "1.0.0",
   "engines": {
