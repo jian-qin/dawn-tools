@@ -123,28 +123,27 @@ export function getNowHtmlTagRange() {
 // 获取html标签的ast语法树
 export function getHtmlAst(tag: string) {
   const ast: any = constructTree(tokenize(tag).tokens).ast.content.children[0].content
-  ast.openStart._content = ast.openStart.content.trimEnd()
-  ast.openEnd._isClose = ast.openEnd.content[0] === '/'
+  const openStartOldLen = ast.openStart.content.length
+  ast.openStart.content = ast.openStart.content.trimEnd()
+  ast.openStart.endPosition -= openStartOldLen - ast.openStart.content.length
+  ast.openEnd.isClose = ast.openEnd.content[0] === '/'
   if (ast.attributes) {
-    ast._attributes = ast.attributes.flatMap((attr: any) => {
-      let _assembly = attr.key.content
+    ast.attributes = ast.attributes.flatMap((attr: any) => {
+      const keyOldLen = attr.key.content.length
+      attr.key.content = attr.key.content.trimEnd()
+      attr.key.endPosition -= keyOldLen - attr.key.content.length
+      let assembly = attr.key.content
       if (attr.value) {
-        _assembly += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
+        assembly += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
       }
-      const len = _assembly.length
-      _assembly = _assembly.trimEnd()
-      const offset = len - _assembly.length
-      const _endPosition = (attr.endWrapper || attr.value || attr.key).endPosition
-      const _endPositionTrim = _endPosition - offset
-      return _assembly ? [{
+      return assembly ? [{
         ...attr,
-        _assembly,
-        _endPosition,
-        _endPositionTrim,
+        assembly,
+        endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
       }] : []
     })
-    if (ast._attributes.length === 0) {
-      delete ast._attributes
+    if (ast.attributes.length === 0) {
+      delete ast.attributes
     }
   }
   return ast
@@ -156,7 +155,7 @@ export function isTagWrap(
   ast: any = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
 ) {
   const editor = window.activeTextEditor!
-  const firstNodePosition = ast._attributes ? ast._attributes[0].key.startPosition : ast.openEnd.startPosition
+  const firstNodePosition = ast.attributes ? ast.attributes[0].key.startPosition : ast.openEnd.startPosition
   const firstNodeLine = editor.document.positionAt(editor.document.offsetAt(tagRange.start) + firstNodePosition + 1).line
   return firstNodeLine !== tagRange.start.line
 }
@@ -166,16 +165,16 @@ export function getNearHtmlAttr(
   tagRange = getNowHtmlTagRange()!,
   ast: any = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
 ) {
-  if (!ast._attributes) return
+  if (!ast.attributes) return
   const editor = window.activeTextEditor!
   const startIndex = editor.document.offsetAt(editor.selection.start) - editor.document.offsetAt(tagRange.start)
-  const offsets: number[] = ast._attributes.map((attr: any) => Math.min(
+  const offsets: number[] = ast.attributes.map((attr: any) => Math.min(
     Math.abs(startIndex - attr.key.startPosition),
-    Math.abs(startIndex - attr._endPositionTrim),
+    Math.abs(startIndex - attr.endPosition),
   ))
   return {
     startIndex,
-    attr: ast._attributes[offsets.indexOf(Math.min(...offsets))],
+    attr: ast.attributes[offsets.indexOf(Math.min(...offsets))],
   }
 }
 

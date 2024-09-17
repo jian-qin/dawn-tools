@@ -1,4 +1,4 @@
-import { commands, window, Selection, env } from 'vscode'
+import { commands, window, Selection, env, EndOfLine } from 'vscode'
 import { waitSelectionChange, getNowHtmlTagRange, getIndentationMode, isTagWrap, getHtmlAst, getNearHtmlAttr } from './tools'
 
 // 格式化选中html代码片段（自动选中光标所在html）
@@ -8,25 +8,28 @@ commands.registerCommand("dawn-tools.html.format", async () => {
   const editor = window.activeTextEditor!
   const tag = editor.document.getText(tagRange)
   const ast = getHtmlAst(tag)
-  let newTag = ast.openStart._content
+  let newTag = ast.openStart.content
   const end = ast.openEnd.content
   const tab = getIndentationMode().tab
+  const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
   // 格式化标签
   if (isTagWrap(tagRange, ast)) {
-    if (ast._attributes) {
-      const attrStr = ast._attributes.map((attr: any) => attr._assembly.replaceAll(`\n${tab}`, '\n')).join(' ')
+    if (ast.attributes) {
+      // 属性值中的缩进-减少
+      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(newline + tab, newline)).join(' ')
       newTag += ` ${attrStr}`
     }
-    newTag += `${ast.openEnd._isClose ? ' ' : ''}${end}`
+    newTag += `${ast.openEnd.isClose ? ' ' : ''}${end}`
   } else {
     const line = editor.document.lineAt(tagRange.start.line)
     const baseTab = line.text.substring(0, line.firstNonWhitespaceCharacterIndex)
-    const attrTab = `\n${baseTab}${tab}`
-    if (ast._attributes) {
-      const attrStr = ast._attributes.map((attr: any) => attr._assembly.replaceAll('\n', `\n${tab}`)).join(attrTab)
+    const attrTab = `${newline}${baseTab}${tab}`
+    if (ast.attributes) {
+      // 属性值中的缩进-增加
+      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(newline, newline + tab)).join(attrTab)
       newTag += `${attrTab}${attrStr}`
     }
-    newTag += `\n${baseTab}${end}`
+    newTag += `${newline}${baseTab}${end}`
   }
   // 设置新的标签
   await editor.edit(editBuilder => editBuilder.replace(tagRange, newTag))
@@ -44,10 +47,10 @@ commands.registerCommand("dawn-tools.html.attr.copy", async () => {
   const attr = getNearHtmlAttr(tagRange)?.attr
   if (!attr) return false
   const beforeGap = tag.substring(0, attr.key.startPosition).match(/\s+$/)?.[0] || ''
-  await env.clipboard.writeText(beforeGap + attr._assembly)
+  await env.clipboard.writeText(beforeGap + attr.assembly)
   editor.selection = new Selection(
     editor.document.positionAt(editor.document.offsetAt(tagRange.start) + attr.key.startPosition - beforeGap.length),
-    editor.document.positionAt(editor.document.offsetAt(tagRange.start) + attr._endPositionTrim + 1)
+    editor.document.positionAt(editor.document.offsetAt(tagRange.start) + attr.endPosition + 1)
   )
   return true
 })
@@ -73,11 +76,11 @@ commands.registerCommand("dawn-tools.html.attr.paste", async () => {
   const getBeforeGap = (position: number) => tag.substring(0, position).match(/\s+$/)?.[0] || ''
   let nodePosition: number
   // 是否有属性
-  if (ast._attributes) {
+  if (ast.attributes) {
     const { startIndex, attr } = getNearHtmlAttr(tagRange, ast)!
     const beforeGap = getBeforeGap(attr.key.startPosition)
     // 光标更靠近属性名的开始/结束
-    if (Math.abs(startIndex - attr.key.startPosition) < Math.abs(startIndex - attr._endPositionTrim)) {
+    if (Math.abs(startIndex - attr.key.startPosition) < Math.abs(startIndex - attr.endPosition)) {
       nodePosition = attr.key.startPosition
       if (isTagWrap(tagRange, ast)) {
         text = `${text}${beforeGap}`
@@ -85,12 +88,12 @@ commands.registerCommand("dawn-tools.html.attr.paste", async () => {
         text = `${text} `
       }
     } else {
-      nodePosition = attr._endPositionTrim + 1
+      nodePosition = attr.endPosition + 1
       if (isTagWrap(tagRange, ast)) {
         text = `${beforeGap}${text}`
       } else {
-        if (ast.openEnd._isClose) {
-          text = tag[attr._endPositionTrim + 1] === ' ' ? ` ${text}` : ` ${text} `
+        if (ast.openEnd.isClose) {
+          text = tag[attr.endPosition + 1] === ' ' ? ` ${text}` : ` ${text} `
         } else {
           text = ` ${text}`
         }
@@ -102,7 +105,7 @@ commands.registerCommand("dawn-tools.html.attr.paste", async () => {
       const beforeGap = getBeforeGap(nodePosition)
       text = `${tab}${text}${beforeGap}`
     } else {
-      if (ast.openEnd._isClose) {
+      if (ast.openEnd.isClose) {
         text = tag[nodePosition - 1] === ' ' ? `${text} ` : ` ${text} `
       } else {
         text = ` ${text}`
