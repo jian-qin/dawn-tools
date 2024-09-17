@@ -1,4 +1,4 @@
-import { commands, window, env } from 'vscode'
+import { commands, window, env, Selection } from 'vscode'
 import { formatFilePath, getRootPath, getFileName } from './tools'
 
 // 复制文件名
@@ -15,6 +15,7 @@ commands.registerCommand("dawn-tools.file.copy.path.relative", async (file) => {
   if (!editor) return
   const currentPath = formatFilePath(editor.document.uri.path)
   const targetPath = formatFilePath(file.path)
+  if (currentPath === targetPath) return
   let currentArr = currentPath.split('/')
   let targetArr = targetPath.split('/')
   currentArr.some((item, index) => {
@@ -50,9 +51,11 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
   // 特殊根目录过滤
   text = text.replace(/^\/src\//, '@/')
   // 文件名转换为变量名（小驼峰）
-  const fileName = getFileName(text)?.replace(/\W(\w)/g, (_, $1) => $1.toUpperCase())
+  const fileName = getFileName(text)?.replace(/\W(\w)/g, (_, $1) => $1.toUpperCase()) || ''
   // 读取光标前后10行，判断导入模式（import/require）
   let mode = 'import'
+  let startCharacter = 7
+  let endSymbol = ''
   const offsets = [0, -1, -2, -3, -4, -5, 1, 2, 3, 4, 5]
   const require_reg = /(^|=|;)\s*require\s*\(/
   const import_reg = /(^|;)\s*import(\s|\{|'|"|`)/
@@ -62,16 +65,24 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
     const lineText = editor.document.lineAt(line).text
     if (require_reg.test(lineText)) {
       mode = 'require'
+      if (lineText.at(-1) === ';') {
+        endSymbol = ';'
+      }
       return true
     } else if (import_reg.test(lineText)) {
       mode = 'import'
+      if (lineText.at(-1) === ';') {
+        endSymbol = ';'
+      }
       return true
     }
   })
   if (mode === 'import') {
-    text = `import ${fileName} from '${text}'`
+    text = `import ${fileName} from '${text}'${endSymbol}`
+    startCharacter = 7
   } else {
-    text = `const ${fileName} = require('${text}')`
+    text = `const ${fileName} = require('${text}')${endSymbol}`
+    startCharacter = 6
   }
   // 当前行是否为空行
   const isEmptyLine = editor.document.lineAt(editor.selection.start.line).isEmptyOrWhitespace
@@ -79,4 +90,9 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
     await commands.executeCommand('editor.action.insertLineAfter')
   }
   await editor.edit(editBuilder => editBuilder.insert(editor.selection.start, text))
+  editor.selection = new Selection(
+    editor.selection.start.line, startCharacter,
+    editor.selection.start.line, startCharacter + fileName.length,
+  )
+  return text
 })
