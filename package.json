@@ -101,8 +101,20 @@
         "when": "editorTextFocus"
       },
       {
-        "key": "alt+oem_2",
+        "key": "alt+f",
         "command": "dawn-tools.other.symbol",
+        "when": "editorTextFocus",
+        "args": "toEN"
+      },
+      {
+        "key": "alt+g",
+        "command": "dawn-tools.other.symbol",
+        "when": "editorTextFocus",
+        "args": "toCN"
+      },
+      {
+        "key": "alt+backspace",
+        "command": "dawn-tools.other.word.delete",
         "when": "editorTextFocus"
       }
     ]
