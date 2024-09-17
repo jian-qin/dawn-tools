@@ -6,7 +6,7 @@ Need to install the [dawn-tools](https://github.com/jian-qin/dawn-tools) plugin 
 
 ## Release Notes
 
-### 0.0.1
+### 1.0.0
 
 Initial release of dawn-tools
 

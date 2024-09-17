@@ -3,7 +3,7 @@
   "displayName": "Dawn Tools",
   "description": "Dawn Tools",
   "publisher": "jian-qin",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -125,7 +125,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "pnpm vsce package --no-dependencies",
+    "publish": "pnpm vsce publish --no-dependencies"
   },
   "dependencies": {
     "hyntax": "^1.1.9",
