@@ -58,7 +58,7 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
   let endSymbol = ''
   const offsets = [0, -1, -2, -3, -4, -5, 1, 2, 3, 4, 5]
   const require_reg = /(^|=|;)\s*require\s*\(/
-  const import_reg = /(^|;)\s*import(\s|\{|'|"|`)/
+  const import_reg = /(^|;)\s*import(\s|\{|\*|'|"|`)/
   offsets.some(offset => {
     const line = editor.selection.start.line + offset
     if (line < 0 || line > editor.document.lineCount) return
