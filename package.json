@@ -116,6 +116,18 @@
         "key": "alt+backspace",
         "command": "dawn-tools.other.word.delete",
         "when": "editorTextFocus"
+      },
+      {
+        "key": "alt+n",
+        "command": "dawn-tools.other.bracket",
+        "when": "editorTextFocus",
+        "args": "collapse"
+      },
+      {
+        "key": "alt+m",
+        "command": "dawn-tools.other.bracket",
+        "when": "editorTextFocus",
+        "args": "expand"
       }
     ]
   },
@@ -129,7 +141,8 @@
   },
   "dependencies": {
     "hyntax": "^1.1.9",
-    "posthtml-parser": "^0.12.0"
+    "posthtml-parser": "^0.12.0",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
@@ -139,8 +152,7 @@
     "@typescript-eslint/parser": "^7.11.0",
     "@vscode/test-cli": "^0.0.9",
     "@vscode/test-electron": "^2.4.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.4.5"
+    "eslint": "^8.57.0"
   },
   "repository": {
     "type": "git",

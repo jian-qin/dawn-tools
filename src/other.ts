@@ -1,5 +1,6 @@
-import { commands, window, env, Selection } from 'vscode'
-import { getNearMatch } from './tools'
+import { commands, window, env, Selection, EndOfLine } from 'vscode'
+import { getNearMatch, getIndentationMode } from './tools'
+import { createSourceFile, ScriptTarget } from 'typescript'
 
 // 特殊粘贴
 commands.registerCommand("dawn-tools.other.paste", async () => {
@@ -58,4 +59,47 @@ commands.registerCommand("dawn-tools.other.word.delete", async () => {
   editor.selection = new Selection(match.startPosition, match.startPosition)
   await env.clipboard.writeText(match.value)
   return match.value
+})
+
+// 展开/收起光标所在括号内的内容
+commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | 'expand') => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  await commands.executeCommand('editor.action.selectToBracket')
+  if (editor.selection.isEmpty) return
+  const text = editor.document.getText(editor.selection)
+  if (!['(', '[', '{'].includes(text[0])) return
+  if (!text.replace(/^.(.+).$/s, '$1').trim()) return
+  const tab = getIndentationMode().tab
+  const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
+  let _text = text
+  // 对象需要特殊处理
+  if (text[0] === '{') {
+    _text = `[${text}]`
+  }
+  const ast: any = createSourceFile('temp.ts', _text, ScriptTarget.Latest, true).statements[0]
+  let nodes: { pos: number, end: number }[] = []
+  if (text[0] === '(') {
+    nodes = ast.expression.parameters
+  } else if (text[0] === '[') {
+    nodes = ast.expression.elements
+  } else if (text[0] === '{') {
+    nodes = ast.expression.elements[0].properties
+  }
+  if (!nodes) return
+  const items = nodes.map(item => _text.substring(item.pos, item.end).trim())
+  let newText = ''
+  if (mode === 'collapse') {
+    // 换行的缩进-减少
+    newText = items.map(item => item.replaceAll(newline + tab, newline)).join(', ')
+    newText = text[0] === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
+  } else {
+    // 换行的缩进-增加
+    const startLine = editor.document.lineAt(editor.selection.start.line)
+    const baseTab = startLine.text.substring(0, startLine.firstNonWhitespaceCharacterIndex)
+    newText = items.map(item => item.replaceAll(newline, newline + tab)).join(`,${newline}${baseTab}${tab}`)
+    newText = `${text.at(0)}${newline}${baseTab}${tab}${newText}${newline}${baseTab}${text.at(-1)}`
+  }
+  await editor.edit(editBuilder => editBuilder.replace(editor.selection, newText))
+  return newText
 })
