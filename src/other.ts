@@ -68,14 +68,16 @@ commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | '
   await commands.executeCommand('editor.action.selectToBracket')
   if (editor.selection.isEmpty) return
   const text = editor.document.getText(editor.selection)
-  if (!['(', '[', '{'].includes(text[0])) return
+  if (!['(', '[', '{', '<'].includes(text[0])) return
   if (!text.replace(/^.(.+).$/s, '$1').trim()) return
   const tab = getIndentationMode().tab
   const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
   let _text = text
-  // 对象需要特殊处理
+  // 特殊处理
   if (text[0] === '{') {
     _text = `[${text}]`
+  } else if (text[0] === '<') {
+    _text = `fn${text}`
   }
   const ast: any = createSourceFile('temp.ts', _text, ScriptTarget.Latest, true).statements[0]
   let nodes: { pos: number, end: number }[] = []
@@ -85,6 +87,8 @@ commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | '
     nodes = ast.expression.elements
   } else if (text[0] === '{') {
     nodes = ast.expression.elements[0].properties
+  } else if (text[0] === '<') {
+    nodes = ast.expression.typeArguments
   }
   if (!nodes) return
   const items = nodes.map(item => _text.substring(item.pos, item.end).trim())
