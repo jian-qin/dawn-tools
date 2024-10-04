@@ -72,23 +72,18 @@ commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | '
   if (!text.replace(/^.(.+).$/s, '$1').trim()) return
   const tab = getIndentationMode().tab
   const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
-  let _text = text
-  // 特殊处理
-  if (text[0] === '{') {
-    _text = `[${text}]`
-  } else if (text[0] === '<') {
-    _text = `fn${text}`
-  }
-  const ast: any = createSourceFile('temp.ts', _text, ScriptTarget.Latest, true).statements[0]
+  let _text = ''
   let nodes: { pos: number, end: number }[] = []
+  // @ts-ignore
+  const astFn = (newText: string) => createSourceFile('temp.ts', _text = newText, ScriptTarget.Latest).statements[0].expression
   if (text[0] === '(') {
-    nodes = ast.expression.parameters
+    nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
   } else if (text[0] === '[') {
-    nodes = ast.expression.elements
+    nodes = astFn(text).elements
   } else if (text[0] === '{') {
-    nodes = ast.expression.elements[0].properties
+    nodes = astFn(`[${text}]`).elements[0].properties
   } else if (text[0] === '<') {
-    nodes = ast.expression.typeArguments
+    nodes = astFn(`fn${text}`).typeArguments
   }
   if (!nodes) return
   const items = nodes.map(item => _text.substring(item.pos, item.end).trim())
