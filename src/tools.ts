@@ -14,7 +14,7 @@ export function waitSelectionChange() {
 
 // 格式化文件路径（统一斜杠、大小写盘符、去除盘符前的斜杠）
 export function formatFilePath(path: string) {
-  return path.replace(/\\/g, '/').replace(/^\/([a-z]:)/, '$1').replace(/^[a-z]:/, $0 => $0.toUpperCase())
+  return path.replace(/\\/g, '/').replace(/^\/([a-zA-Z]:)/, '$1').replace(/^[a-z]:/, $0 => $0.toUpperCase())
 }
 
 // 获取文件对应的根目录
