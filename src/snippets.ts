@@ -1,5 +1,5 @@
 import { commands, window, env, Selection } from 'vscode'
-import { waitSelectionChange } from './tools'
+import { insertLineIfNotEmpty, waitSelectionChange } from './tools'
 import { selectionsHistory } from './store'
 
 // 插入console.log
@@ -16,11 +16,7 @@ commands.registerCommand("dawn-tools.snippets.log", async (editSelection?: Selec
     editor.selection = editSelection
     await waitSelectionChange()
   }
-  // 当前行是否为空行
-  const isEmptyLine = editor.document.lineAt(editor.selection.start.line).isEmptyOrWhitespace
-  if (!isEmptyLine) {
-    await commands.executeCommand('editor.action.insertLineAfter')
-  }
+  await insertLineIfNotEmpty()
   await editor.edit(editBuilder => editBuilder.insert(editor.selection.start, `console.log(${text})`))
   const endPosition = editor.selection.start.translate(0, -1)
   editor.selection = new Selection(

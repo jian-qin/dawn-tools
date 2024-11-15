@@ -1,5 +1,5 @@
 import { commands, window, env, Selection } from 'vscode'
-import { formatFilePath, getRootPath, getFileName } from './tools'
+import { insertLineIfNotEmpty, formatFilePath, getRootPath, getFileName } from './tools'
 
 // 复制文件名
 commands.registerCommand("dawn-tools.file.copy.name", async (file) => {
@@ -84,11 +84,7 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
     text = `const ${fileName} = require('${text}')${endSymbol}`
     startCharacter = 6
   }
-  // 当前行是否为空行
-  const isEmptyLine = editor.document.lineAt(editor.selection.start.line).isEmptyOrWhitespace
-  if (!isEmptyLine) {
-    await commands.executeCommand('editor.action.insertLineAfter')
-  }
+  await insertLineIfNotEmpty()
   await editor.edit(editBuilder => editBuilder.insert(editor.selection.start, text))
   editor.selection = new Selection(
     editor.selection.start.line, startCharacter,
