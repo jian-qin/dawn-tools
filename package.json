@@ -128,6 +128,24 @@
         "command": "dawn-tools.other.bracket",
         "when": "editorTextFocus",
         "args": "expand"
+      },
+      {
+        "key": "ctrl+alt+h",
+        "command": "dawn-tools.vue.scrollTo",
+        "when": "editorTextFocus && editorLangId == 'vue'",
+        "args": "template"
+      },
+      {
+        "key": "ctrl+alt+j",
+        "command": "dawn-tools.vue.scrollTo",
+        "when": "editorTextFocus && editorLangId == 'vue'",
+        "args": "script"
+      },
+      {
+        "key": "ctrl+alt+c",
+        "command": "dawn-tools.vue.scrollTo",
+        "when": "editorTextFocus && editorLangId == 'vue'",
+        "args": "style"
       }
     ]
   },
