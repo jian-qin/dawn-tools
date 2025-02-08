@@ -72,9 +72,21 @@ export function getRangeMiddlePosition () {
   return editor.document.positionAt(index)
 }
 
+// 获取光标位置的偏移坐标
+export function positionOffset(position: Position, offset: number) {
+  const document = window.activeTextEditor!.document
+  const max = document.getText().length - 1
+  let index = document.offsetAt(position) + offset
+  if (index < 0) {
+    index = 0
+  } else if (index > max) {
+    index = max
+  }
+  return document.positionAt(index)
+}
+
 // 获取标签开始位置的下标
 export function getHtmlStartIndex(position: Position) {
-  if (!position) return
   const document = window.activeTextEditor?.document
   if (!document) return
   const index = document.offsetAt(position) + 1
@@ -103,7 +115,7 @@ export function getHtmlEndIndex(beforePosition: Position) {
     // 是否合法的 html 标签
     const ast: any = parser(tag)
     // 开始标签匹配失败
-    if (!ast[0]?.tag) return null
+    if (!ast[0]?.tag) continue
     afterIndex = beforeIndex + match.index + 1
     break
   } while (reg.lastIndex < text.length)
@@ -115,20 +127,16 @@ export function getHtmlEndIndex(beforePosition: Position) {
 export function getNowHtmlTagRange() {
   const nowPosition = getRangeMiddlePosition()
   if (!nowPosition) return
-  // 循环获取标签位置
-  let forIndex = nowPosition
-  let beforePosition, afterPosition
+  // 循环匹配标签位置
+  let currentPosition = nowPosition
+  let beforePosition: ReturnType<typeof getHtmlStartIndex>
+  let afterPosition: ReturnType<typeof getHtmlEndIndex>
   do {
-    beforePosition = getHtmlStartIndex(forIndex)
+    beforePosition = getHtmlStartIndex(currentPosition)
     if (!beforePosition) return
     afterPosition = getHtmlEndIndex(beforePosition)
-    if (afterPosition === null) {
-      forIndex = module.exports.positionAddMinus(beforePosition, -1)
-      continue
-    } else if (!afterPosition) {
-      return
-    }
-    break
+    if (afterPosition) break
+    currentPosition = beforePosition
   } while (true)
   return new Range(beforePosition, afterPosition)
 }
