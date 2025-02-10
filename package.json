@@ -118,16 +118,9 @@
         "when": "editorTextFocus"
       },
       {
-        "key": "alt+n",
+        "key": "alt+b",
         "command": "dawn-tools.other.bracket",
-        "when": "editorTextFocus",
-        "args": "collapse"
-      },
-      {
-        "key": "alt+m",
-        "command": "dawn-tools.other.bracket",
-        "when": "editorTextFocus",
-        "args": "expand"
+        "when": "editorTextFocus"
       },
       {
         "key": "ctrl+alt+c",

@@ -61,7 +61,7 @@ commands.registerCommand("dawn-tools.other.word.delete", async () => {
 })
 
 // 展开/收起光标所在括号内的内容
-commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | 'expand') => {
+commands.registerCommand("dawn-tools.other.bracket", async () => {
   const nodes = await getBracketAst()
   if (!nodes?.length) return
   const editor = window.activeTextEditor!
@@ -69,7 +69,7 @@ commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | '
   const tab = getIndentationMode().tab
   const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
   let newText = ''
-  if (mode === 'collapse') {
+  if (nodes[0].start.line !== editor.selection.start.line) {
     // 换行的缩进-减少
     newText = nodes.map(({ text }) => text.replaceAll(newline + tab, newline)).join(', ')
     newText = text[0] === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
@@ -108,7 +108,7 @@ commands.registerCommand("dawn-tools.other.json.copy", async () => {
     end = nodes[nodes.indexOf(nearNode) + 1].start
   }
   editor.selection = new Selection(start, end)
-  env.clipboard.writeText(editor.document.getText(editor.selection))
+  env.clipboard.writeText(nearNode.text)
   return true
 })
 
