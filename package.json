@@ -130,6 +130,16 @@
         "args": "expand"
       },
       {
+        "key": "ctrl+alt+c",
+        "command": "dawn-tools.other.json.copy",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+alt+d",
+        "command": "dawn-tools.other.json.delete",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "ctrl+alt+h",
         "command": "dawn-tools.vue.scrollTo",
         "when": "editorTextFocus && editorLangId == 'vue'",
@@ -142,7 +152,7 @@
         "args": "script"
       },
       {
-        "key": "ctrl+alt+c",
+        "key": "ctrl+alt+k",
         "command": "dawn-tools.vue.scrollTo",
         "when": "editorTextFocus && editorLangId == 'vue'",
         "args": "style"

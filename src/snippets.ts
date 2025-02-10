@@ -17,8 +17,8 @@ commands.registerCommand("dawn-tools.snippets.log", async (editSelection?: Selec
     await waitSelectionChange()
   }
   await insertLineIfNotEmpty()
-  await editor.edit(editBuilder => editBuilder.insert(editor.selection.start, `console.log(${text})`))
-  const endPosition = editor.selection.start.translate(0, -1)
+  await editor.edit(editBuilder => editBuilder.insert(editor.selection.active, `console.log(${text})`))
+  const endPosition = editor.selection.active.translate(0, -1)
   editor.selection = new Selection(
     editor.document.positionAt(editor.document.offsetAt(endPosition) - text.length),
     endPosition,

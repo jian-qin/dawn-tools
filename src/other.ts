@@ -1,6 +1,5 @@
 import { commands, window, env, Selection, EndOfLine } from 'vscode'
-import { getNearMatch, getIndentationMode } from './tools'
-import { createSourceFile, ScriptTarget } from 'typescript'
+import { getNearMatch, getIndentationMode, getBracketAst, getNearPosition, positionOffset } from './tools'
 
 // 特殊粘贴
 commands.registerCommand("dawn-tools.other.paste", async () => {
@@ -63,42 +62,60 @@ commands.registerCommand("dawn-tools.other.word.delete", async () => {
 
 // 展开/收起光标所在括号内的内容
 commands.registerCommand("dawn-tools.other.bracket", async (mode: 'collapse' | 'expand') => {
-  const editor = window.activeTextEditor
-  if (!editor?.selection) return
-  await commands.executeCommand('editor.action.selectToBracket')
-  if (editor.selection.isEmpty) return
+  const nodes = await getBracketAst()
+  if (!nodes?.length) return
+  const editor = window.activeTextEditor!
   const text = editor.document.getText(editor.selection)
-  if (!['(', '[', '{', '<'].includes(text[0])) return
-  if (!text.replace(/^.(.+).$/s, '$1').trim()) return
   const tab = getIndentationMode().tab
   const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
-  let _text = ''
-  let nodes: { pos: number, end: number }[] = []
-  // @ts-ignore
-  const astFn = (newText: string) => createSourceFile('temp.ts', _text = newText, ScriptTarget.Latest).statements[0].expression
-  if (text[0] === '(') {
-    nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
-  } else if (text[0] === '[') {
-    nodes = astFn(text).elements
-  } else if (text[0] === '{') {
-    nodes = astFn(`[${text}]`).elements[0].properties
-  } else if (text[0] === '<') {
-    nodes = astFn(`fn${text}`).typeArguments
-  }
-  if (!nodes) return
-  const items = nodes.map(item => _text.substring(item.pos, item.end).trim())
   let newText = ''
   if (mode === 'collapse') {
     // 换行的缩进-减少
-    newText = items.map(item => item.replaceAll(newline + tab, newline)).join(', ')
+    newText = nodes.map(({ text }) => text.replaceAll(newline + tab, newline)).join(', ')
     newText = text[0] === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
   } else {
     // 换行的缩进-增加
     const startLine = editor.document.lineAt(editor.selection.start.line)
     const baseTab = startLine.text.substring(0, startLine.firstNonWhitespaceCharacterIndex)
-    newText = items.map(item => item.replaceAll(newline, newline + tab)).join(`,${newline}${baseTab}${tab}`)
+    newText = nodes.map(({ text }) => text.replaceAll(newline, newline + tab)).join(`,${newline}${baseTab}${tab}`)
     newText = `${text.at(0)}${newline}${baseTab}${tab}${newText}${newline}${baseTab}${text.at(-1)}`
   }
   await editor.edit(editBuilder => editBuilder.replace(editor.selection, newText))
   return newText
+})
+
+// 复制光标所在括号内的属性
+commands.registerCommand("dawn-tools.other.json.copy", async () => {
+  const nodes = await getBracketAst()
+  if (!nodes?.length) return
+  const editor = window.activeTextEditor!
+  const nearPosition = getNearPosition(nodes.active, nodes.flatMap(({ start, end }) => [start, end]))
+  const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
+  let { start, end } = nearNode
+  if (nodes.length === 1) {
+    // 只有一个属性
+    start = positionOffset(editor.selection.start, 1)
+    end = positionOffset(editor.selection.end, -1)
+  } else if (nodes.at(-1) === nearNode) {
+    // 最后一个属性
+    start = nodes[nodes.indexOf(nearNode) - 1].end
+    const afterText = editor.document.getText(new Selection(nearNode.end, editor.selection.end))
+    const offset = afterText.match(/,|;/)
+    if (offset) {
+      end = positionOffset(nearNode.end, offset.index! + 1)
+    }
+  } else {
+    end = nodes[nodes.indexOf(nearNode) + 1].start
+  }
+  editor.selection = new Selection(start, end)
+  env.clipboard.writeText(editor.document.getText(editor.selection))
+  return true
+})
+
+// 删除光标所在括号内的属性
+commands.registerCommand("dawn-tools.other.json.delete", async () => {
+  const isCopy = await commands.executeCommand('dawn-tools.other.json.copy')
+  if (!isCopy) return false
+  await commands.executeCommand('deleteLeft')
+  return true
 })

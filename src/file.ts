@@ -60,7 +60,7 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
   const require_reg = /(^|=|;)\s*require\s*\(/
   const import_reg = /(^|;)\s*import(\s|\{|\*|'|"|`)/
   offsets.some(offset => {
-    const line = editor.selection.start.line + offset
+    const line = editor.selection.active.line + offset
     if (line < 0 || line >= editor.document.lineCount) return
     const lineText = editor.document.lineAt(line).text
     if (require_reg.test(lineText)) {
@@ -85,10 +85,10 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
     startCharacter = 6
   }
   await insertLineIfNotEmpty()
-  await editor.edit(editBuilder => editBuilder.insert(editor.selection.start, text))
+  await editor.edit(editBuilder => editBuilder.insert(editor.selection.active, text))
   editor.selection = new Selection(
-    editor.selection.start.line, startCharacter,
-    editor.selection.start.line, startCharacter + fileName.length,
+    editor.selection.active.line, startCharacter,
+    editor.selection.active.line, startCharacter + fileName.length,
   )
   return text
 })

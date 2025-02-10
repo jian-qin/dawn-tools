@@ -1,6 +1,7 @@
 import { commands, window, Range, Position, workspace } from 'vscode'
 import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
+import { createSourceFile, ScriptTarget } from 'typescript'
 
 // 等待editor.selection修改完成
 export function waitSelectionChange() {
@@ -19,7 +20,7 @@ export async function insertLineIfNotEmpty() {
     // 多行选中时，光标右移跳转到最后一行，避免插入行的位置不对
     await commands.executeCommand('cursorRight')
   }
-  const isEmptyLine = editor.document.lineAt(editor.selection.start.line).isEmptyOrWhitespace
+  const isEmptyLine = editor.document.lineAt(editor.selection.active.line).isEmptyOrWhitespace
   if (!isEmptyLine) {
     await commands.executeCommand('editor.action.insertLineAfter')
   }
@@ -60,18 +61,6 @@ export function getIndentationMode () {
   }
 }
 
-// 获取选中区域中间位置坐标
-export function getRangeMiddlePosition () {
-  const editor = window.activeTextEditor
-  if (!editor?.selection) return
-  const { start, end } = editor.selection
-  const startIndex = editor.document.offsetAt(start)
-  const endIndex = editor.document.offsetAt(end)
-  if (startIndex === endIndex) return start
-  const index = Math.floor((startIndex + endIndex) / 2)
-  return editor.document.positionAt(index)
-}
-
 // 获取光标位置的偏移坐标
 export function positionOffset(position: Position, offset: number) {
   const document = window.activeTextEditor!.document
@@ -83,6 +72,16 @@ export function positionOffset(position: Position, offset: number) {
     index = max
   }
   return document.positionAt(index)
+}
+
+// 获取指定位置最近的位置
+export function getNearPosition(position: Position, positions: Position[]) {
+  const editor = window.activeTextEditor!
+  const offset = editor.document.offsetAt(position)
+  const offsets = positions.map(item => editor.document.offsetAt(item))
+  const offsetsAbs = offsets.map(item => Math.abs(offset - item))
+  const min = Math.min(...offsetsAbs)
+  return positions[offsetsAbs.indexOf(min)]
 }
 
 // 获取标签开始位置的下标
@@ -125,10 +124,9 @@ export function getHtmlEndIndex(beforePosition: Position) {
 
 // 获取光标所在的标签位置
 export function getNowHtmlTagRange() {
-  const nowPosition = getRangeMiddlePosition()
-  if (!nowPosition) return
   // 循环匹配标签位置
-  let currentPosition = nowPosition
+  let currentPosition = window.activeTextEditor?.selection.active
+  if (!currentPosition) return
   let beforePosition: ReturnType<typeof getHtmlStartIndex>
   let afterPosition: ReturnType<typeof getHtmlEndIndex>
   do {
@@ -188,7 +186,7 @@ export function getNearHtmlAttr(
 ) {
   if (!ast.attributes) return
   const editor = window.activeTextEditor!
-  const startIndex = editor.document.offsetAt(editor.selection.start) - editor.document.offsetAt(tagRange.start)
+  const startIndex = editor.document.offsetAt(editor.selection.active) - editor.document.offsetAt(tagRange.start)
   const offsets: number[] = ast.attributes.map((attr: any) => Math.min(
     Math.abs(startIndex - attr.key.startPosition),
     Math.abs(startIndex - attr.endPosition),
@@ -203,7 +201,7 @@ export function getNearHtmlAttr(
 export function getNearMatch(reg: RegExp) {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
-  const position = editor.selection.end
+  const position = editor.selection.active
   const range = new Range(
     position.line && position.line - 1, 0,
     position.line + 2, 0,
@@ -225,4 +223,45 @@ export function getNearMatch(reg: RegExp) {
       startPosition.translate(0, match[0].length),
     ),
   }
+}
+
+// 获取光标所在括号内的内容ast
+export async function getBracketAst() {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  const active = editor.selection.active
+  await commands.executeCommand('editor.action.selectToBracket')
+  if (editor.selection.isEmpty) return
+  const text = editor.document.getText(editor.selection)
+  if (!['(', '[', '{', '<'].includes(text[0])) return
+  if (!text.replace(/^.(.+).$/s, '$1').trim()) return
+  let _text = ''
+  let nodes: { pos: number, end: number }[] = []
+  // @ts-ignore
+  const astFn = (newText: string) => createSourceFile('temp.ts', _text = newText, ScriptTarget.Latest).statements[0].expression
+  if (text[0] === '(') {
+    nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
+  } else if (text[0] === '[') {
+    nodes = astFn(text).elements
+  } else if (text[0] === '{') {
+    nodes = astFn(`[${text}]`).elements[0].properties
+  } else if (text[0] === '<') {
+    nodes = astFn(`fn${text}`).typeArguments
+  }
+  if (!nodes) return
+  const startIndex = editor.document.offsetAt(editor.selection.start)
+  let currentIndex = 0
+  return Object.assign(
+    nodes.map(item => {
+      const content = _text.substring(item.pos, item.end).trim()
+      const index = text.indexOf(content, currentIndex)
+      currentIndex = index + content.length
+      return {
+        text: content,
+        start: editor.document.positionAt(startIndex + index),
+        end: editor.document.positionAt(startIndex + currentIndex),
+      }
+    }),
+    { active }
+  )
 }
