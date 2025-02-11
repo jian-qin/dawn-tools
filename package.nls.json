@@ -1,0 +1,7 @@
+{
+  "dawn-tools.file.copy.name": "Copy file name",
+  "dawn-tools.file.copy.path.relative": "Copy relative path",
+  "dawn-tools.file.copy.path.absolute": "Copy absolute path",
+  "dawn-tools.html.attr.paste": "Paste the attribute of the tag where the cursor is",
+  "dawn-tools.file.copy.path.paste": "Paste the copied path"
+}

@@ -1,0 +1,7 @@
+{
+  "dawn-tools.file.copy.name": "复制文件名",
+  "dawn-tools.file.copy.path.relative": "复制相对路径",
+  "dawn-tools.file.copy.path.absolute": "复制绝对路径",
+  "dawn-tools.html.attr.paste": "粘贴光标所在标签的属性",
+  "dawn-tools.file.copy.path.paste": "粘贴复制的路径"
+}

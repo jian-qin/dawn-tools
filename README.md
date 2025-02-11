@@ -6,11 +6,11 @@ English | [简体中文](./README.zh-CN.md)
 
 ## File/Folder Right-click Menu
 
-+ `复制文件名` If the file name is index, copy the name of the folder where the file is located
++ `Copy file name` If the file name is index, copy the name of the folder where the file is located
 
-+ `复制相对路径` Copy the path relative to the currently viewed file
++ `Copy relative path` Copy the path relative to the currently viewed file
 
-+ `复制绝对路径` Copy the absolute path of the file
++ `Copy absolute path` Copy the absolute path of the file
 
 ## Shortcuts
 
@@ -54,7 +54,7 @@ English | [简体中文](./README.zh-CN.md)
 
 + `ctrl + shift + v` Special paste, formatted according to clipboard contents
 
-  + If `复制相对路径`, `复制绝对路径` copied content
+  + If `Copy relative path`, `Copy absolute path` copied content
 
     + Read 10 lines before and after the cursor, determine the import mode, whether to add a semicolon, whether to add a new line
 

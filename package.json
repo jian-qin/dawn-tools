@@ -14,29 +14,30 @@
     "*"
   ],
   "main": "./out/extension.js",
+  "capabilities": {
+    "localizedLanguages": ["en", "zh-cn"]
+  },
   "contributes": {
     "commands": [
       {
         "command": "dawn-tools.file.copy.name",
-        "title": "复制文件名"
+        "title": "%dawn-tools.file.copy.name%"
       },
       {
         "command": "dawn-tools.file.copy.path.relative",
-        "title": "复制相对路径"
+        "title": "%dawn-tools.file.copy.path.relative%"
       },
       {
         "command": "dawn-tools.file.copy.path.absolute",
-        "title": "复制绝对路径"
+        "title": "%dawn-tools.file.copy.path.absolute%"
       },
       {
         "command": "dawn-tools.html.attr.paste",
-        "when": "editorTextFocus",
-        "title": "粘贴光标所在标签的属性"
+        "title": "%dawn-tools.html.attr.paste%"
       },
       {
         "command": "dawn-tools.file.copy.path.paste",
-        "when": "editorTextFocus",
-        "title": "粘贴复制的路径"
+        "title": "%dawn-tools.file.copy.path.paste%"
       }
     ],
     "menus": {
