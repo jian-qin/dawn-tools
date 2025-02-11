@@ -1,5 +1,12 @@
-import { commands, window, env, Selection, Range, EndOfLine } from 'vscode'
-import { getNearMatch, getIndentationMode, getBracketAst, getNearPosition, positionOffset } from './tools'
+import { commands, window, env, Selection, Range } from 'vscode'
+import {
+  getNearMatch,
+  getIndentationMode,
+  getBracketAst,
+  getNearPosition,
+  positionOffset,
+  getLineIndent,
+} from './tools'
 
 // 特殊粘贴
 commands.registerCommand('dawn-tools.other.paste', async () => {
@@ -69,19 +76,17 @@ commands.registerCommand('dawn-tools.other.bracket', async () => {
   if (!nodes?.length) return
   const editor = window.activeTextEditor!
   const text = editor.document.getText(editor.selection)
-  const tab = getIndentationMode().tab
-  const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
+  const { tab, br } = getIndentationMode()
   let newText = ''
   if (nodes[0].start.line !== editor.selection.start.line) {
     // 换行的缩进-减少
-    newText = nodes.map(({ text }) => text.replaceAll(newline + tab, newline)).join(', ')
-    newText = text[0] === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
+    newText = nodes.map(({ text }) => text.replaceAll(br + tab, br)).join(', ')
+    newText = text.at(0) === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
   } else {
     // 换行的缩进-增加
-    const startLine = editor.document.lineAt(editor.selection.start.line)
-    const baseTab = startLine.text.substring(0, startLine.firstNonWhitespaceCharacterIndex)
-    newText = nodes.map(({ text }) => text.replaceAll(newline, newline + tab)).join(`,${newline}${baseTab}${tab}`)
-    newText = `${text.at(0)}${newline}${baseTab}${tab}${newText}${newline}${baseTab}${text.at(-1)}`
+    const baseTab = getLineIndent(editor.selection.start.line).text
+    newText = nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
+    newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
   }
   await editor.edit((editBuilder) => editBuilder.replace(editor.selection, newText))
   return newText
@@ -124,4 +129,28 @@ commands.registerCommand('dawn-tools.other.json.delete', async () => {
   if (!isCopy) return false
   await commands.executeCommand('deleteLeft')
   return true
+})
+
+// 粘贴光标所在括号内的属性
+commands.registerCommand('dawn-tools.other.json.paste', async () => {
+  let text = (await env.clipboard.readText()).trim()
+  if (!text) return
+  const nodes = await getBracketAst()
+  if (!nodes) return
+  const editor = window.activeTextEditor!
+  const selectionText = editor.document.getText(editor.selection)
+  const { tab, br } = getIndentationMode()
+  if (nodes.length) {
+  } else {
+    let value = ''
+    const start = selectionText.at(0)
+    const end = selectionText.at(-1)
+    if (editor.selection.isSingleLine) {
+      value = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
+    } else {
+      const baseTab = getLineIndent(editor.selection.start.line).text
+      value = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
+    }
+    await editor.edit((editBuilder) => editBuilder.replace(editor.selection, value))
+  }
 })

@@ -1,4 +1,4 @@
-import { commands, window, Selection, env, EndOfLine } from 'vscode'
+import { commands, window, Selection, env } from 'vscode'
 import {
   waitSelectionChange,
   getNowHtmlTagRange,
@@ -6,6 +6,7 @@ import {
   isTagWrap,
   getHtmlAst,
   getNearHtmlAttr,
+  getLineIndent,
 } from './tools'
 
 // 格式化选中html代码片段（自动选中光标所在html）
@@ -17,26 +18,24 @@ commands.registerCommand('dawn-tools.html.format', async () => {
   const ast = getHtmlAst(tag)
   let newTag = ast.openStart.content
   const end = ast.openEnd.content
-  const tab = getIndentationMode().tab
-  const newline = editor.document.eol === EndOfLine.LF ? '\n' : '\r\n'
+  const { tab, br } = getIndentationMode()
   // 格式化标签
   if (isTagWrap(tagRange, ast)) {
     if (ast.attributes) {
       // 属性值中的缩进-减少
-      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(newline + tab, newline)).join(' ')
+      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(br + tab, br)).join(' ')
       newTag += ` ${attrStr}`
     }
     newTag += `${ast.openEnd.isClose ? ' ' : ''}${end}`
   } else {
-    const line = editor.document.lineAt(tagRange.start.line)
-    const baseTab = line.text.substring(0, line.firstNonWhitespaceCharacterIndex)
-    const attrTab = `${newline}${baseTab}${tab}`
+    const baseTab = getLineIndent(tagRange.start.line).text
+    const attrTab = `${br}${baseTab}${tab}`
     if (ast.attributes) {
       // 属性值中的缩进-增加
-      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(newline, newline + tab)).join(attrTab)
+      const attrStr = ast.attributes.map((attr: any) => attr.assembly.replaceAll(br, br + tab)).join(attrTab)
       newTag += `${attrTab}${attrStr}`
     }
-    newTag += `${newline}${baseTab}${end}`
+    newTag += `${br}${baseTab}${end}`
   }
   // 设置新的标签
   await editor.edit((editBuilder) => editBuilder.replace(tagRange, newTag))

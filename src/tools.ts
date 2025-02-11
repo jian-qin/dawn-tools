@@ -1,4 +1,4 @@
-import { commands, window, Range, Position, workspace } from 'vscode'
+import { commands, window, Range, Position, workspace, EndOfLine } from 'vscode'
 import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
 import { createSourceFile, ScriptTarget } from 'typescript'
@@ -61,6 +61,17 @@ export function getIndentationMode() {
     mode: indentMode ? 'space' : 'tab',
     size: tabSize,
     tab: indentMode ? ' '.repeat(Number(tabSize)) : '\t',
+    br: editor.document.eol === EndOfLine.LF ? '\n' : '\r\n',
+  }
+}
+
+// 获取指定行的缩进
+export function getLineIndent(line: number) {
+  const textLine = window.activeTextEditor!.document.lineAt(line)
+  const text = textLine.text.substring(0, textLine.firstNonWhitespaceCharacterIndex)
+  return {
+    text,
+    tabSize: text.replaceAll(getIndentationMode().tab, ' ').length,
   }
 }
 
@@ -238,7 +249,9 @@ export async function getBracketAst() {
   if (editor.selection.isEmpty) return
   const text = editor.document.getText(editor.selection)
   if (!['(', '[', '{', '<'].includes(text[0])) return
-  if (!text.replace(/^.(.+).$/s, '$1').trim()) return
+  if (!text.replace(/^.(.+).$/s, '$1').trim()) {
+    return Object.assign([], { active })
+  }
   let _text = ''
   let nodes: { pos: number; end: number }[] = []
   const astFn = (newText: string) =>

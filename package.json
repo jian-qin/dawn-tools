@@ -15,7 +15,10 @@
   ],
   "main": "./out/extension.js",
   "capabilities": {
-    "localizedLanguages": ["en", "zh-cn"]
+    "localizedLanguages": [
+      "en",
+      "zh-cn"
+    ]
   },
   "contributes": {
     "commands": [
@@ -131,6 +134,11 @@
       {
         "key": "ctrl+alt+d",
         "command": "dawn-tools.other.json.delete",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+alt+v",
+        "command": "dawn-tools.other.json.paste",
         "when": "editorTextFocus"
       },
       {
