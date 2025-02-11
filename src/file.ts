@@ -1,4 +1,4 @@
-import { commands, window, env, Selection } from 'vscode'
+import { commands, window, env, Selection, Range } from 'vscode'
 import { insertLineIfNotEmpty, formatFilePath, getRootPath, getFileName } from './tools'
 
 // 复制文件名
@@ -48,11 +48,9 @@ commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
   let text = (await env.clipboard.readText()).trim()
-  // 特殊根目录过滤
-  text = text.replace(/^\/src\//, '@/')
   // 文件名转换为变量名（小驼峰）
   const fileName = getFileName(text)?.replace(/\W(\w)/g, (_, $1) => $1.toUpperCase()) || ''
-  // 读取光标前后10行，判断导入模式（import/require）
+  // 读取光标前后（10行），判断导入模式（import/require）
   let mode = 'import'
   let startCharacter = 7
   let endSymbol = ''
@@ -77,6 +75,21 @@ commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
       return true
     }
   })
+  // vue项目根目录转换为@
+  {
+    const reg = /^\/src\//
+    const value = '@/'
+    const has = () => {
+      const offset = editor.selection.active.line
+      const min = Math.max(offset + Math.min(...offsets), 0)
+      const max = Math.min(offset + Math.max(...offsets) + 1, editor.document.lineCount)
+      return editor.document.getText(new Range(min, 0, max, 0)).includes(value)
+    }
+    // 复制的路径是vue文件、或者当前编辑器是vue文件、或者当前文件已经导入过@（光标前后范围查找）
+    if (reg.test(text) && (text.endsWith('.vue') || editor.document.languageId === 'vue' || has())) {
+      text = text.replace(reg, value)
+    }
+  }
   if (mode === 'import') {
     text = `import ${fileName} from '${text}'${endSymbol}`
     startCharacter = 7

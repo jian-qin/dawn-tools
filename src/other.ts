@@ -1,4 +1,4 @@
-import { commands, window, env, Selection, EndOfLine } from 'vscode'
+import { commands, window, env, Selection, Range, EndOfLine } from 'vscode'
 import { getNearMatch, getIndentationMode, getBracketAst, getNearPosition, positionOffset } from './tools'
 
 // 特殊粘贴
@@ -105,7 +105,7 @@ commands.registerCommand('dawn-tools.other.json.copy', async () => {
   } else if (nodes.at(-1) === nearNode) {
     // 最后一个属性
     start = nodes[nodes.indexOf(nearNode) - 1].end
-    const afterText = editor.document.getText(new Selection(nearNode.end, editor.selection.end))
+    const afterText = editor.document.getText(new Range(nearNode.end, editor.selection.end))
     const offset = afterText.match(/,|;/)
     if (offset) {
       end = positionOffset(nearNode.end, offset.index! + 1)
