@@ -1,8 +1,15 @@
 import { commands, window, Selection, env, EndOfLine } from 'vscode'
-import { waitSelectionChange, getNowHtmlTagRange, getIndentationMode, isTagWrap, getHtmlAst, getNearHtmlAttr } from './tools'
+import {
+  waitSelectionChange,
+  getNowHtmlTagRange,
+  getIndentationMode,
+  isTagWrap,
+  getHtmlAst,
+  getNearHtmlAttr,
+} from './tools'
 
 // 格式化选中html代码片段（自动选中光标所在html）
-commands.registerCommand("dawn-tools.html.format", async () => {
+commands.registerCommand('dawn-tools.html.format', async () => {
   const tagRange = getNowHtmlTagRange()
   if (!tagRange) return
   const editor = window.activeTextEditor!
@@ -32,14 +39,14 @@ commands.registerCommand("dawn-tools.html.format", async () => {
     newTag += `${newline}${baseTab}${end}`
   }
   // 设置新的标签
-  await editor.edit(editBuilder => editBuilder.replace(tagRange, newTag))
+  await editor.edit((editBuilder) => editBuilder.replace(tagRange, newTag))
   // 选中更新的标签
   editor.selection = new Selection(tagRange.start, getNowHtmlTagRange()!.end)
   await waitSelectionChange()
 })
 
 // 复制光标所在标签的属性
-commands.registerCommand("dawn-tools.html.attr.copy", async () => {
+commands.registerCommand('dawn-tools.html.attr.copy', async () => {
   const tagRange = getNowHtmlTagRange()
   if (!tagRange) return false
   const editor = window.activeTextEditor!
@@ -56,7 +63,7 @@ commands.registerCommand("dawn-tools.html.attr.copy", async () => {
 })
 
 // 删除光标所在标签的属性
-commands.registerCommand("dawn-tools.html.attr.delete", async () => {
+commands.registerCommand('dawn-tools.html.attr.delete', async () => {
   const isCopy = await commands.executeCommand('dawn-tools.html.attr.copy')
   if (!isCopy) return false
   await commands.executeCommand('deleteLeft')
@@ -64,7 +71,7 @@ commands.registerCommand("dawn-tools.html.attr.delete", async () => {
 })
 
 // 粘贴光标所在标签的属性
-commands.registerCommand("dawn-tools.html.attr.paste", async () => {
+commands.registerCommand('dawn-tools.html.attr.paste', async () => {
   let text = (await env.clipboard.readText()).trim()
   if (!text) return false
   const tagRange = getNowHtmlTagRange()
@@ -113,7 +120,7 @@ commands.registerCommand("dawn-tools.html.attr.paste", async () => {
     }
   }
   const newTag = `${tag.substring(0, nodePosition)}${text}${tag.substring(nodePosition)}`
-  await editor.edit(editBuilder => editBuilder.replace(tagRange, newTag))
+  await editor.edit((editBuilder) => editBuilder.replace(tagRange, newTag))
   editor.selection = new Selection(
     editor.document.positionAt(editor.document.offsetAt(tagRange.start) + nodePosition),
     editor.document.positionAt(editor.document.offsetAt(tagRange.start) + nodePosition + text.length)

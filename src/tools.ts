@@ -5,7 +5,7 @@ import { createSourceFile, ScriptTarget } from 'typescript'
 
 // 等待editor.selection修改完成
 export function waitSelectionChange() {
-  return new Promise<void>(resolve => {
+  return new Promise<void>((resolve) => {
     const { dispose } = window.onDidChangeTextEditorSelection(() => {
       dispose()
       resolve()
@@ -28,14 +28,17 @@ export async function insertLineIfNotEmpty() {
 
 // 格式化文件路径（统一斜杠、大小写盘符、去除盘符前的斜杠）
 export function formatFilePath(path: string) {
-  return path.replace(/\\/g, '/').replace(/^\/([a-zA-Z]:)/, '$1').replace(/^[a-z]:/, $0 => $0.toUpperCase())
+  return path
+    .replace(/\\/g, '/')
+    .replace(/^\/([a-zA-Z]:)/, '$1')
+    .replace(/^[a-z]:/, ($0) => $0.toUpperCase())
 }
 
 // 获取文件对应的根目录
 export function getRootPath(path: string) {
   path = formatFilePath(path)
-  const roots = workspace.workspaceFolders!.map(root => formatFilePath(root.uri.path))
-  return roots.find(root => path.startsWith(root))!
+  const roots = workspace.workspaceFolders!.map((root) => formatFilePath(root.uri.path))
+  return roots.find((root) => path.startsWith(root))!
 }
 
 // 获取文件路径中的文件名
@@ -50,7 +53,7 @@ export function getFileName(path: string) {
 }
 
 // 获取当前文件的缩进模式
-export function getIndentationMode () {
+export function getIndentationMode() {
   const editor = window.activeTextEditor!
   const indentMode = editor.options.insertSpaces!
   const tabSize = editor.options.tabSize!
@@ -78,8 +81,8 @@ export function positionOffset(position: Position, offset: number) {
 export function getNearPosition(position: Position, positions: Position[]) {
   const editor = window.activeTextEditor!
   const offset = editor.document.offsetAt(position)
-  const offsets = positions.map(item => editor.document.offsetAt(item))
-  const offsetsAbs = offsets.map(item => Math.abs(offset - item))
+  const offsets = positions.map((item) => editor.document.offsetAt(item))
+  const offsetsAbs = offsets.map((item) => Math.abs(offset - item))
   const min = Math.min(...offsetsAbs)
   return positions[offsetsAbs.indexOf(min)]
 }
@@ -155,11 +158,15 @@ export function getHtmlAst(tag: string) {
       if (attr.value) {
         assembly += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
       }
-      return assembly ? [{
-        ...attr,
-        assembly,
-        endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
-      }] : []
+      return assembly
+        ? [
+            {
+              ...attr,
+              assembly,
+              endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
+            },
+          ]
+        : []
     })
     if (ast.attributes.length === 0) {
       delete ast.attributes
@@ -175,7 +182,9 @@ export function isTagWrap(
 ) {
   const editor = window.activeTextEditor!
   const firstNodePosition = ast.attributes ? ast.attributes[0].key.startPosition : ast.openEnd.startPosition
-  const firstNodeLine = editor.document.positionAt(editor.document.offsetAt(tagRange.start) + firstNodePosition + 1).line
+  const firstNodeLine = editor.document.positionAt(
+    editor.document.offsetAt(tagRange.start) + firstNodePosition + 1
+  ).line
   return firstNodeLine !== tagRange.start.line
 }
 
@@ -187,10 +196,9 @@ export function getNearHtmlAttr(
   if (!ast.attributes) return
   const editor = window.activeTextEditor!
   const startIndex = editor.document.offsetAt(editor.selection.active) - editor.document.offsetAt(tagRange.start)
-  const offsets: number[] = ast.attributes.map((attr: any) => Math.min(
-    Math.abs(startIndex - attr.key.startPosition),
-    Math.abs(startIndex - attr.endPosition),
-  ))
+  const offsets: number[] = ast.attributes.map((attr: any) =>
+    Math.min(Math.abs(startIndex - attr.key.startPosition), Math.abs(startIndex - attr.endPosition))
+  )
   return {
     startIndex,
     attr: ast.attributes[offsets.indexOf(Math.min(...offsets))],
@@ -202,26 +210,22 @@ export function getNearMatch(reg: RegExp) {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
   const position = editor.selection.active
-  const range = new Range(
-    position.line && position.line - 1, 0,
-    position.line + 2, 0,
-  )
+  const range = new Range(position.line && position.line - 1, 0, position.line + 2, 0)
   const text = editor.document.getText(range)
   const matchs = [...text.matchAll(reg)]
   if (!matchs.length) return
   // 距离最近的单词
   const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(range.start)
-  const indexs = matchs.map(item => Math.min(Math.abs(startIndex - item.index), Math.abs(startIndex - item.index - item[0].length)))
+  const indexs = matchs.map((item) =>
+    Math.min(Math.abs(startIndex - item.index), Math.abs(startIndex - item.index - item[0].length))
+  )
   const match = matchs[indexs.indexOf(Math.min(...indexs))]
   // 删除
   const startPosition = editor.document.positionAt(editor.document.offsetAt(range.start) + match.index)
   return {
     value: match[0],
     startPosition,
-    range: new Range(
-      startPosition,
-      startPosition.translate(0, match[0].length),
-    ),
+    range: new Range(startPosition, startPosition.translate(0, match[0].length)),
   }
 }
 
@@ -236,9 +240,10 @@ export async function getBracketAst() {
   if (!['(', '[', '{', '<'].includes(text[0])) return
   if (!text.replace(/^.(.+).$/s, '$1').trim()) return
   let _text = ''
-  let nodes: { pos: number, end: number }[] = []
-  // @ts-ignore
-  const astFn = (newText: string) => createSourceFile('temp.ts', _text = newText, ScriptTarget.Latest).statements[0].expression
+  let nodes: { pos: number; end: number }[] = []
+  const astFn = (newText: string) =>
+    // @ts-ignore
+    createSourceFile('temp.ts', (_text = newText), ScriptTarget.Latest).statements[0].expression
   if (text[0] === '(') {
     nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
   } else if (text[0] === '[') {
@@ -252,7 +257,7 @@ export async function getBracketAst() {
   const startIndex = editor.document.offsetAt(editor.selection.start)
   let currentIndex = 0
   return Object.assign(
-    nodes.map(item => {
+    nodes.map((item) => {
       const content = _text.substring(item.pos, item.end).trim()
       const index = text.indexOf(content, currentIndex)
       currentIndex = index + content.length

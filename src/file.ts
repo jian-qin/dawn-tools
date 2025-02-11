@@ -2,7 +2,7 @@ import { commands, window, env, Selection } from 'vscode'
 import { insertLineIfNotEmpty, formatFilePath, getRootPath, getFileName } from './tools'
 
 // 复制文件名
-commands.registerCommand("dawn-tools.file.copy.name", async (file) => {
+commands.registerCommand('dawn-tools.file.copy.name', async (file) => {
   const name = getFileName(file.path)
   if (!name) return
   await env.clipboard.writeText(name)
@@ -10,7 +10,7 @@ commands.registerCommand("dawn-tools.file.copy.name", async (file) => {
 })
 
 // 复制相对路径
-commands.registerCommand("dawn-tools.file.copy.path.relative", async (file) => {
+commands.registerCommand('dawn-tools.file.copy.path.relative', async (file) => {
   const editor = window.activeTextEditor
   if (!editor) return
   const currentPath = formatFilePath(editor.document.uri.path)
@@ -33,7 +33,7 @@ commands.registerCommand("dawn-tools.file.copy.path.relative", async (file) => {
 })
 
 // 复制绝对路径
-commands.registerCommand("dawn-tools.file.copy.path.absolute", async (file) => {
+commands.registerCommand('dawn-tools.file.copy.path.absolute', async (file) => {
   const rootPath = getRootPath(file.path)
   let path = formatFilePath(file.path).replace(rootPath, '')
   if (path[0] !== '/') {
@@ -44,7 +44,7 @@ commands.registerCommand("dawn-tools.file.copy.path.absolute", async (file) => {
 })
 
 // 粘贴复制的路径
-commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
+commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
   let text = (await env.clipboard.readText()).trim()
@@ -59,7 +59,7 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
   const offsets = [0, -1, -2, -3, -4, -5, 1, 2, 3, 4, 5]
   const require_reg = /(^|=|;)\s*require\s*\(/
   const import_reg = /(^|;)\s*import(\s|\{|\*|'|"|`)/
-  offsets.some(offset => {
+  offsets.some((offset) => {
     const line = editor.selection.active.line + offset
     if (line < 0 || line >= editor.document.lineCount) return
     const lineText = editor.document.lineAt(line).text
@@ -85,10 +85,12 @@ commands.registerCommand("dawn-tools.file.copy.path.paste", async () => {
     startCharacter = 6
   }
   await insertLineIfNotEmpty()
-  await editor.edit(editBuilder => editBuilder.insert(editor.selection.active, text))
+  await editor.edit((editBuilder) => editBuilder.insert(editor.selection.active, text))
   editor.selection = new Selection(
-    editor.selection.active.line, startCharacter,
-    editor.selection.active.line, startCharacter + fileName.length,
+    editor.selection.active.line,
+    startCharacter,
+    editor.selection.active.line,
+    startCharacter + fileName.length
   )
   return text
 })
