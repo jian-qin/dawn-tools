@@ -135,7 +135,7 @@ commands.registerCommand('dawn-tools.other.json.delete', async (index?: number) 
 
 // 粘贴光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.paste', async () => {
-  const text = (await env.clipboard.readText()).trim().replace(/\s*,|;$/, '')
+  let text = (await env.clipboard.readText()).trim().replace(/\s*,|;$/, '')
   if (!text) return
   const nodes = await getBracketAst()
   if (!nodes) return
@@ -149,9 +149,7 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
   const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
   const { tab, br } = getIndentationMode()
   const baseTab = getLineIndent(editor.selection.start.line).text
-  let editStart = editor.selection.start
-  let editEnd = editor.selection.end
-  let newText = ''
+  let editRange: Range
   if (nodes.length) {
     // 有属性
     const isSingleLine = editor.selection.start.line === nodes[0].start.line
@@ -163,42 +161,38 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
     }
     if (nearPosition === nodes[0].start) {
       // 第一个属性
-      newText = isSingleLine
+      editRange = new Range(editor.selection.start.translate(0, 1), nodes[0].start)
+      text = isSingleLine
         ? `${selectionText[0] === '{' ? ' ' : ''}${text}${delimiter} `
         : `${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
-      editStart = editStart.translate(0, 1)
-      editEnd = nodes[0].start
     } else if (nearPosition === nodes.at(-1)!.end) {
       // 最后一个属性
-      newText = isSingleLine
+      editRange = new Range(nodes.at(-1)!.end, editor.selection.end.translate(0, -1))
+      text = isSingleLine
         ? `${delimiter} ${text}${selectionText[0] === '{' ? ' ' : ''}`
         : `${delimiter}${br}${baseTab}${tab}${text}${br}${baseTab}`
-      editStart = nodes.at(-1)!.end
-      editEnd = editEnd.translate(0, -1)
     } else {
       // 中间的属性
-      newText = isSingleLine
+      editRange =
+        positionType === 'start'
+          ? new Range(nodes[nodes.indexOf(nearNode) - 1].end, nearNode.start)
+          : new Range(nearNode.end, nodes[nodes.indexOf(nearNode) + 1].start)
+      text = isSingleLine
         ? `${delimiter} ${text}${delimiter} `
         : `${delimiter}${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
-      if (positionType === 'start') {
-        editEnd = nearNode.start
-        editStart = nodes[nodes.indexOf(nearNode) - 1].end
-      } else {
-        editStart = nearNode.end
-        editEnd = nodes[nodes.indexOf(nearNode) + 1].start
-      }
     }
   } else {
     // 无属性
+    editRange = editor.selection
     const start = selectionText.at(0)
     const end = selectionText.at(-1)
     if (editor.selection.isSingleLine) {
-      newText = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
+      text = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
     } else {
-      newText = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
+      text = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
     }
   }
-  await editor.edit((editBuilder) => editBuilder.replace(new Range(editStart, editEnd), newText))
+  await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
   await commands.executeCommand(
     'dawn-tools.other.json.copy',
     nodes.indexOf(nearNode) + (positionType === 'end' ? 1 : 0)
