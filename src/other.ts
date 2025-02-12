@@ -93,7 +93,7 @@ commands.registerCommand('dawn-tools.other.bracket', async () => {
 })
 
 // 复制光标所在括号内的属性
-commands.registerCommand('dawn-tools.other.json.copy', async () => {
+commands.registerCommand('dawn-tools.other.json.copy', async (index?: number) => {
   const nodes = await getBracketAst()
   if (!nodes?.length) return
   const editor = window.activeTextEditor!
@@ -101,7 +101,9 @@ commands.registerCommand('dawn-tools.other.json.copy', async () => {
     nodes.active,
     nodes.flatMap(({ start, end }) => [start, end])
   )
-  const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
+  const nearNode =
+    (typeof index === 'number' && nodes[index]) ||
+    nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
   let { start, end } = nearNode
   if (nodes.length === 1) {
     // 只有一个属性
@@ -124,33 +126,81 @@ commands.registerCommand('dawn-tools.other.json.copy', async () => {
 })
 
 // 删除光标所在括号内的属性
-commands.registerCommand('dawn-tools.other.json.delete', async () => {
-  const isCopy = await commands.executeCommand('dawn-tools.other.json.copy')
-  if (!isCopy) return false
+commands.registerCommand('dawn-tools.other.json.delete', async (index?: number) => {
+  const isCopy = await commands.executeCommand('dawn-tools.other.json.copy', index)
+  if (!isCopy) return
   await commands.executeCommand('deleteLeft')
   return true
 })
 
 // 粘贴光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.paste', async () => {
-  let text = (await env.clipboard.readText()).trim()
+  const text = (await env.clipboard.readText()).trim().replace(/\s*,|;$/, '')
   if (!text) return
   const nodes = await getBracketAst()
   if (!nodes) return
   const editor = window.activeTextEditor!
   const selectionText = editor.document.getText(editor.selection)
+  const nearPosition = getNearPosition(
+    nodes.active,
+    nodes.flatMap(({ start, end }) => [start, end])
+  )
+  const positionType = nodes.some(({ start }) => nearPosition === start) ? 'start' : 'end'
+  const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
   const { tab, br } = getIndentationMode()
+  const baseTab = getLineIndent(editor.selection.start.line).text
+  let editStart = editor.selection.start
+  let editEnd = editor.selection.end
+  let newText = ''
   if (nodes.length) {
+    // 有属性
+    const isSingleLine = editor.selection.start.line === nodes[0].start.line
+    let delimiter = editor.document
+      .getText(new Range(nodes[0].end, nodes[1]?.start || editor.selection.end.translate(0, -1)))
+      .trim()
+    if (!delimiter && nodes.length === 1) {
+      delimiter = ','
+    }
+    if (nearPosition === nodes[0].start) {
+      // 第一个属性
+      newText = isSingleLine
+        ? `${selectionText[0] === '{' ? ' ' : ''}${text}${delimiter} `
+        : `${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
+      editStart = editStart.translate(0, 1)
+      editEnd = nodes[0].start
+    } else if (nearPosition === nodes.at(-1)!.end) {
+      // 最后一个属性
+      newText = isSingleLine
+        ? `${delimiter} ${text}${selectionText[0] === '{' ? ' ' : ''}`
+        : `${delimiter}${br}${baseTab}${tab}${text}${br}${baseTab}`
+      editStart = nodes.at(-1)!.end
+      editEnd = editEnd.translate(0, -1)
+    } else {
+      // 中间的属性
+      newText = isSingleLine
+        ? `${delimiter} ${text}${delimiter} `
+        : `${delimiter}${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
+      if (positionType === 'start') {
+        editEnd = nearNode.start
+        editStart = nodes[nodes.indexOf(nearNode) - 1].end
+      } else {
+        editStart = nearNode.end
+        editEnd = nodes[nodes.indexOf(nearNode) + 1].start
+      }
+    }
   } else {
-    let value = ''
+    // 无属性
     const start = selectionText.at(0)
     const end = selectionText.at(-1)
     if (editor.selection.isSingleLine) {
-      value = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
+      newText = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
     } else {
-      const baseTab = getLineIndent(editor.selection.start.line).text
-      value = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
+      newText = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
     }
-    await editor.edit((editBuilder) => editBuilder.replace(editor.selection, value))
   }
+  await editor.edit((editBuilder) => editBuilder.replace(new Range(editStart, editEnd), newText))
+  await commands.executeCommand(
+    'dawn-tools.other.json.copy',
+    nodes.indexOf(nearNode) + (positionType === 'end' ? 1 : 0)
+  )
 })

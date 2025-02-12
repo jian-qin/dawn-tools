@@ -30,6 +30,8 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + alt + d` Execute `ctrl + alt + c` and then delete
 
+- `ctrl + alt + v` Paste after the attribute closest to the cursor in the parentheses where the cursor is located
+
 ### vue
 
 - `ctrl + alt + h` The currently viewed vue file, scroll to the `template` block

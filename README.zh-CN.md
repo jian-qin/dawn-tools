@@ -30,6 +30,8 @@
 
 - `ctrl + alt + d` 执行 `ctrl + alt + c` 后再执行删除
 
+- `ctrl + alt + v` 粘贴在光标所在括号的最靠近光标的属性之后
+
 ### vue
 
 - `ctrl + alt + h` 当前查看的 vue 文件，滚动到 `template` 代码块
