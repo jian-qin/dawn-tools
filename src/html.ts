@@ -6,6 +6,7 @@ import {
   tagIsSingleLine,
   getHtmlAst,
   getNearHtmlAttr,
+  selectHtmlAttr,
   getLineIndent,
   positionOffset,
 } from './tools'
@@ -47,28 +48,18 @@ commands.registerCommand('dawn-tools.html.format', async () => {
 
 // 复制光标所在标签的属性
 commands.registerCommand('dawn-tools.html.attr.copy', async (index?: number) => {
-  const tagRange = getNowHtmlTagRange()
-  if (!tagRange) return
-  const editor = window.activeTextEditor!
-  const tagText = editor.document.getText(tagRange)
-  const ast = getHtmlAst(tagText)
-  const attr = (typeof index === 'number' && ast.attributes[index]) || getNearHtmlAttr(tagRange, ast)?.attr
+  const attr = await selectHtmlAttr(index)
   if (!attr) return
-  const beforeGap = tagText.substring(0, attr.startPosition).match(/\s+$/)?.[0] || ''
-  await env.clipboard.writeText(beforeGap + attr.content)
-  editor.selection = new Selection(
-    positionOffset(tagRange.start, attr.startPosition - beforeGap.length),
-    positionOffset(tagRange.start, attr.endPosition + 1)
-  )
-  return true
+  await env.clipboard.writeText(attr.content)
+  return attr
 })
 
 // 删除光标所在标签的属性
 commands.registerCommand('dawn-tools.html.attr.delete', async (index?: number) => {
-  const isCopy = await commands.executeCommand('dawn-tools.html.attr.copy', index)
-  if (!isCopy) return
+  const attr = await commands.executeCommand('dawn-tools.html.attr.copy', index)
+  if (!attr) return
   await commands.executeCommand('deleteLeft')
-  return true
+  return attr
 })
 
 // 粘贴光标所在标签的属性
@@ -127,12 +118,11 @@ commands.registerCommand('dawn-tools.html.attr.paste', async () => {
     }
     text = isSingleLine ? ` ${text}${ast.selfClosing ? ' ' : ''}` : `${br}${baseTab}${tab}${text}${br}${baseTab}`
   }
-  const editRange = new Range(
-    positionOffset(tagRange.start, editOffset.start),
-    positionOffset(tagRange.start, editOffset.end)
+  await editor.edit((editBuilder) =>
+    editBuilder.replace(
+      new Range(positionOffset(tagRange.start, editOffset.start), positionOffset(tagRange.start, editOffset.end)),
+      text
+    )
   )
-  await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
-  editor.selection = new Selection(editRange.start, editRange.start)
-  await waitSelectionChange()
-  await commands.executeCommand('dawn-tools.html.attr.copy', newIndex)
+  return selectHtmlAttr(newIndex)
 })

@@ -1,4 +1,4 @@
-import { commands, window, Range, Position, workspace, EndOfLine } from 'vscode'
+import { commands, window, Range, Selection, Position, workspace, EndOfLine } from 'vscode'
 import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
 import { createSourceFile, ScriptTarget } from 'typescript'
@@ -224,6 +224,23 @@ export function getNearHtmlAttr(
   } as const
 }
 
+// 选中光标所在标签的属性
+export async function selectHtmlAttr(index?: number) {
+  const tagRange = getNowHtmlTagRange()
+  if (!tagRange) return
+  const editor = window.activeTextEditor!
+  const tagText = editor.document.getText(tagRange)
+  const ast = getHtmlAst(tagText)
+  const attr = (typeof index === 'number' && ast.attributes[index]) || getNearHtmlAttr(tagRange, ast)?.attr
+  if (!attr) return
+  editor.selection = new Selection(
+    positionOffset(tagRange.start, (ast.attributes[ast.attributes.indexOf(attr) - 1] || ast.openStart).endPosition + 1),
+    positionOffset(tagRange.start, attr.endPosition + 1)
+  )
+  await waitSelectionChange()
+  return attr
+}
+
 // 正则匹配光标最近的匹配项
 export function getNearMatch(reg: RegExp) {
   const editor = window.activeTextEditor
@@ -290,4 +307,37 @@ export async function getBracketAst() {
     }),
     { active }
   )
+}
+
+// 选中光标所在括号内的属性
+export async function selectBracketAttr(index?: number) {
+  const nodes = await getBracketAst()
+  if (!nodes?.length) return
+  const editor = window.activeTextEditor!
+  const nearPosition = getNearPosition(
+    nodes.active,
+    nodes.flatMap(({ start, end }) => [start, end])
+  )
+  const nearNode =
+    (typeof index === 'number' && nodes[index]) ||
+    nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
+  let { start, end } = nearNode
+  if (nodes.length === 1) {
+    // 只有一个属性
+    start = positionOffset(editor.selection.start, 1)
+    end = positionOffset(editor.selection.end, -1)
+  } else if (nodes.at(-1) === nearNode) {
+    // 最后一个属性
+    start = nodes[nodes.indexOf(nearNode) - 1].end
+    const afterText = editor.document.getText(new Range(nearNode.end, editor.selection.end))
+    const offset = afterText.match(/,|;/)
+    if (offset) {
+      end = positionOffset(nearNode.end, offset.index! + 1)
+    }
+  } else {
+    end = nodes[nodes.indexOf(nearNode) + 1].start
+  }
+  editor.selection = new Selection(start, end)
+  await waitSelectionChange()
+  return nearNode
 }

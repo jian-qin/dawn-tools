@@ -5,7 +5,7 @@ import {
   getIndentationMode,
   getBracketAst,
   getNearPosition,
-  positionOffset,
+  selectBracketAttr,
   getLineIndent,
 } from './tools'
 
@@ -95,43 +95,18 @@ commands.registerCommand('dawn-tools.other.bracket', async () => {
 
 // 复制光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.copy', async (index?: number) => {
-  const nodes = await getBracketAst()
-  if (!nodes?.length) return
-  const editor = window.activeTextEditor!
-  const nearPosition = getNearPosition(
-    nodes.active,
-    nodes.flatMap(({ start, end }) => [start, end])
-  )
-  const nearNode =
-    (typeof index === 'number' && nodes[index]) ||
-    nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
-  let { start, end } = nearNode
-  if (nodes.length === 1) {
-    // 只有一个属性
-    start = positionOffset(editor.selection.start, 1)
-    end = positionOffset(editor.selection.end, -1)
-  } else if (nodes.at(-1) === nearNode) {
-    // 最后一个属性
-    start = nodes[nodes.indexOf(nearNode) - 1].end
-    const afterText = editor.document.getText(new Range(nearNode.end, editor.selection.end))
-    const offset = afterText.match(/,|;/)
-    if (offset) {
-      end = positionOffset(nearNode.end, offset.index! + 1)
-    }
-  } else {
-    end = nodes[nodes.indexOf(nearNode) + 1].start
-  }
-  editor.selection = new Selection(start, end)
-  env.clipboard.writeText(nearNode.text)
-  return true
+  const node = await selectBracketAttr(index)
+  if (!node) return
+  await env.clipboard.writeText(node.text)
+  return node
 })
 
 // 删除光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.delete', async (index?: number) => {
-  const isCopy = await commands.executeCommand('dawn-tools.other.json.copy', index)
-  if (!isCopy) return
+  const node = await commands.executeCommand('dawn-tools.other.json.copy', index)
+  if (!node) return
   await commands.executeCommand('deleteLeft')
-  return true
+  return node
 })
 
 // 粘贴光标所在括号内的属性
@@ -197,7 +172,10 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
     }
   }
   await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
-  editor.selection = new Selection(editRange.start, editRange.start)
-  await waitSelectionChange()
-  await commands.executeCommand('dawn-tools.other.json.copy', newIndex)
+  {
+    const position = editor.selection.start.translate(0, 1)
+    editor.selection = new Selection(position, position)
+    await waitSelectionChange()
+  }
+  await selectBracketAttr(newIndex)
 })
