@@ -159,61 +159,69 @@ export function getHtmlAst(tag: string) {
   const openStartOldLen = ast.openStart.content.length
   ast.openStart.content = ast.openStart.content.trimEnd()
   ast.openStart.endPosition -= openStartOldLen - ast.openStart.content.length
-  ast.openEnd.isClose = ast.openEnd.content[0] === '/'
-  if (ast.attributes) {
-    ast.attributes = ast.attributes.flatMap((attr: any) => {
-      const keyOldLen = attr.key.content.length
-      attr.key.content = attr.key.content.trimEnd()
-      attr.key.endPosition -= keyOldLen - attr.key.content.length
-      let assembly = attr.key.content
-      if (attr.value) {
-        assembly += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
-      }
-      return assembly
-        ? [
-            {
-              ...attr,
-              assembly,
-              endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
-            },
-          ]
-        : []
-    })
-    if (ast.attributes.length === 0) {
-      delete ast.attributes
+  ast.selfClosing = ast.openEnd.content[0] === '/'
+  ast.attributes ||= []
+  ast.attributes = ast.attributes.flatMap((attr: any) => {
+    const keyOldLen = attr.key.content.length
+    attr.key.content = attr.key.content.trimEnd()
+    attr.key.endPosition -= keyOldLen - attr.key.content.length
+    let content = attr.key.content
+    if (attr.value) {
+      content += `=${attr.startWrapper?.content || ''}${attr.value.content}${attr.endWrapper?.content || ''}`
     }
+    return content
+      ? [
+          {
+            ...attr,
+            content,
+            startPosition: attr.key.startPosition,
+            endPosition: (attr.endWrapper || attr.value || attr.key).endPosition,
+          },
+        ]
+      : []
+  })
+  interface Attribute {
+    content: string // 内容
+    startPosition: number // 开始位置
+    endPosition: number // 结束位置
   }
-  return ast
+  return ast as {
+    selfClosing: boolean // 是否自闭合标签
+    openStart: Attribute // 标签开始
+    openEnd: Attribute // 标签结束
+    attributes: Attribute[] // 标签属性列表
+  }
 }
 
-// 判断标签是否换行
-export function isTagWrap(
+// 判断标签是否单行
+export function tagIsSingleLine(
   tagRange = getNowHtmlTagRange()!,
-  ast: any = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
+  ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
 ) {
   const editor = window.activeTextEditor!
-  const firstNodePosition = ast.attributes ? ast.attributes[0].key.startPosition : ast.openEnd.startPosition
+  const firstNodePosition = ast.attributes.length ? ast.attributes[0].startPosition : ast.openEnd.startPosition
   const firstNodeLine = editor.document.positionAt(
     editor.document.offsetAt(tagRange.start) + firstNodePosition + 1
   ).line
-  return firstNodeLine !== tagRange.start.line
+  return firstNodeLine === tagRange.start.line
 }
 
 // 获取光标最近的标签属性
 export function getNearHtmlAttr(
   tagRange = getNowHtmlTagRange()!,
-  ast: any = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
+  ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
 ) {
-  if (!ast.attributes) return
+  if (!ast.attributes.length) return
   const editor = window.activeTextEditor!
   const startIndex = editor.document.offsetAt(editor.selection.active) - editor.document.offsetAt(tagRange.start)
-  const offsets: number[] = ast.attributes.map((attr: any) =>
-    Math.min(Math.abs(startIndex - attr.key.startPosition), Math.abs(startIndex - attr.endPosition))
-  )
+  const startOffsets = ast.attributes.map(({ startPosition }) => Math.abs(startIndex - startPosition - 1))
+  const endOffsets = ast.attributes.map(({ endPosition }) => Math.abs(startIndex - endPosition))
+  const min = Math.min(...startOffsets, ...endOffsets)
+  const positionType = startOffsets.includes(min) ? 'start' : 'end'
   return {
-    startIndex,
-    attr: ast.attributes[offsets.indexOf(Math.min(...offsets))],
-  }
+    positionType,
+    attr: ast.attributes[(positionType === 'start' ? startOffsets : endOffsets).indexOf(min)],
+  } as const
 }
 
 // 正则匹配光标最近的匹配项
