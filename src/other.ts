@@ -141,18 +141,21 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
   if (!nodes) return
   const editor = window.activeTextEditor!
   const selectionText = editor.document.getText(editor.selection)
-  const nearPosition = getNearPosition(
-    nodes.active,
-    nodes.flatMap(({ start, end }) => [start, end])
-  )
-  const positionType = nodes.some(({ start }) => nearPosition === start) ? 'start' : 'end'
-  const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
   const { tab, br } = getIndentationMode()
   const baseTab = getLineIndent(editor.selection.start.line).text
   let editRange: Range
+  let newIndex = 0
   if (nodes.length) {
     // 有属性
+    const nearPosition = getNearPosition(
+      nodes.active,
+      nodes.flatMap(({ start, end }) => [start, end])
+    )
+    const positionType = nodes.some(({ start }) => nearPosition === start) ? 'start' : 'end'
+    const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
+    newIndex = nodes.indexOf(nearNode) + (positionType === 'start' ? 0 : 1)
     const isSingleLine = editor.selection.start.line === nodes[0].start.line
+    // 分隔符
     let delimiter = editor.document
       .getText(new Range(nodes[0].end, nodes[1]?.start || editor.selection.end.translate(0, -1)))
       .trim()
@@ -193,8 +196,5 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
     }
   }
   await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
-  await commands.executeCommand(
-    'dawn-tools.other.json.copy',
-    nodes.indexOf(nearNode) + (positionType === 'end' ? 1 : 0)
-  )
+  await commands.executeCommand('dawn-tools.other.json.copy', newIndex)
 })

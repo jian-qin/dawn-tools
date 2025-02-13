@@ -78,17 +78,18 @@ commands.registerCommand('dawn-tools.html.attr.paste', async () => {
   const tagRange = getNowHtmlTagRange()
   if (!tagRange) return
   const editor = window.activeTextEditor!
-  const tagText = editor.document.getText(tagRange)
-  const ast = getHtmlAst(tagText)
+  const ast = getHtmlAst(editor.document.getText(tagRange))
   const { tab, br } = getIndentationMode()
-  const { attr, positionType } = getNearHtmlAttr(tagRange, ast)!
   const baseTab = getLineIndent(tagRange.start.line).text
   const isSingleLine = tagIsSingleLine(tagRange, ast)
   let editOffset: {
     start: number
     end: number
   }
+  let newIndex = 0
   if (ast.attributes.length) {
+    const { attr, positionType } = getNearHtmlAttr(tagRange, ast)!
+    newIndex = ast.attributes.indexOf(attr) + (positionType === 'start' ? 0 : 1)
     // 有属性
     if (ast.attributes[0] === attr && positionType === 'start') {
       // 第一个属性
@@ -132,8 +133,5 @@ commands.registerCommand('dawn-tools.html.attr.paste', async () => {
       text
     )
   )
-  await commands.executeCommand(
-    'dawn-tools.html.attr.copy',
-    ast.attributes.indexOf(attr) + (positionType === 'end' ? 1 : 0)
-  )
+  await commands.executeCommand('dawn-tools.html.attr.copy', newIndex)
 })
