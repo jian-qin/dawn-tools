@@ -1,5 +1,6 @@
 import { commands, window, env, Selection, Range } from 'vscode'
 import {
+  waitSelectionChange,
   getNearMatch,
   getIndentationMode,
   getBracketAst,
@@ -196,5 +197,7 @@ commands.registerCommand('dawn-tools.other.json.paste', async () => {
     }
   }
   await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
+  editor.selection = new Selection(editRange.start, editRange.start)
+  await waitSelectionChange()
   await commands.executeCommand('dawn-tools.other.json.copy', newIndex)
 })

@@ -127,11 +127,12 @@ commands.registerCommand('dawn-tools.html.attr.paste', async () => {
     }
     text = isSingleLine ? ` ${text}${ast.selfClosing ? ' ' : ''}` : `${br}${baseTab}${tab}${text}${br}${baseTab}`
   }
-  await editor.edit((editBuilder) =>
-    editBuilder.replace(
-      new Range(positionOffset(tagRange.start, editOffset.start), positionOffset(tagRange.start, editOffset.end)),
-      text
-    )
+  const editRange = new Range(
+    positionOffset(tagRange.start, editOffset.start),
+    positionOffset(tagRange.start, editOffset.end)
   )
+  await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
+  editor.selection = new Selection(editRange.start, editRange.start)
+  await waitSelectionChange()
   await commands.executeCommand('dawn-tools.html.attr.copy', newIndex)
 })
