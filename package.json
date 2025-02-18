@@ -3,7 +3,7 @@
   "displayName": "Dawn Tool Set",
   "description": "Dawn Tool Set",
   "publisher": "jian-qin",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "engines": {
     "vscode": "^1.90.0"
   },
