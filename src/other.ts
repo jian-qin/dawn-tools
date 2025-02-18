@@ -68,7 +68,17 @@ commands.registerCommand('dawn-tools.other.word.delete', async () => {
   await editor.edit((editBuilder) => editBuilder.delete(match.range))
   editor.selection = new Selection(match.startPosition, match.startPosition)
   await env.clipboard.writeText(match.value)
-  return match.value
+  return match
+})
+
+// 删除光标最近（3行）的空白字符
+commands.registerCommand('dawn-tools.other.gap.delete', async () => {
+  const match = getNearMatch(/\s+/g)
+  if (!match) return
+  const editor = window.activeTextEditor!
+  editor.edit((editBuilder) => editBuilder.delete(match.range))
+  editor.selection = new Selection(match.startPosition, match.startPosition)
+  return match
 })
 
 // 展开/收起光标所在括号内的内容

@@ -122,6 +122,11 @@
         "when": "editorTextFocus"
       },
       {
+        "key": "alt+delete",
+        "command": "dawn-tools.other.gap.delete",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "alt+b",
         "command": "dawn-tools.other.bracket",
         "when": "editorTextFocus"

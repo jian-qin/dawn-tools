@@ -54,6 +54,8 @@ English | [简体中文](./README.zh-CN.md)
 
 - `alt + backspace` Delete the word closest to the cursor (3 lines)
 
+- `alt + delete` Delete the whitespace closest to the cursor (3 lines)
+
 - `ctrl + shift + v` Special paste, formatted according to clipboard contents
 
   - If `Copy relative path`, `Copy absolute path` copied content

@@ -229,8 +229,7 @@ export async function selectHtmlAttr(index?: number) {
   const tagRange = getNowHtmlTagRange()
   if (!tagRange) return
   const editor = window.activeTextEditor!
-  const tagText = editor.document.getText(tagRange)
-  const ast = getHtmlAst(tagText)
+  const ast = getHtmlAst(editor.document.getText(tagRange))
   const attr = (typeof index === 'number' && ast.attributes[index]) || getNearHtmlAttr(tagRange, ast)?.attr
   if (!attr) return
   editor.selection = new Selection(
@@ -250,18 +249,16 @@ export function getNearMatch(reg: RegExp) {
   const text = editor.document.getText(range)
   const matchs = [...text.matchAll(reg)]
   if (!matchs.length) return
-  // 距离最近的单词
   const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(range.start)
   const indexs = matchs.map((item) =>
     Math.min(Math.abs(startIndex - item.index), Math.abs(startIndex - item.index - item[0].length))
   )
   const match = matchs[indexs.indexOf(Math.min(...indexs))]
-  // 删除
   const startPosition = editor.document.positionAt(editor.document.offsetAt(range.start) + match.index)
   return {
     value: match[0],
     startPosition,
-    range: new Range(startPosition, startPosition.translate(0, match[0].length)),
+    range: new Range(startPosition, positionOffset(startPosition, match[0].length)),
   }
 }
 
