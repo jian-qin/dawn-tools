@@ -47,37 +47,35 @@ const symbol_values = Object.values(symbol_map)
 const symbol_keys_reg = new RegExp(`(${symbol_keys.join('|')})`, 'g')
 const symbol_values_reg = new RegExp(`(${symbol_values.map((val) => '\\' + val).join('|')})`, 'g')
 
-// 替换光标最近（3行）的特殊符号
+// 替换光标最近的特殊符号
 commands.registerCommand('dawn-tools.other.symbol', async (mode: 'toEN' | 'toCN') => {
   const match = getNearMatch(mode === 'toEN' ? symbol_keys_reg : symbol_values_reg)
   if (!match) return
   const editor = window.activeTextEditor!
   const value =
-    mode === 'toEN'
-      ? symbol_map[match.value as keyof typeof symbol_map]
-      : symbol_keys[symbol_values.indexOf(match.value)]
+    mode === 'toEN' ? symbol_map[match.text as keyof typeof symbol_map] : symbol_keys[symbol_values.indexOf(match.text)]
   await editor.edit((editBuilder) => editBuilder.replace(match.range, value))
   return value
 })
 
-// 删除光标最近（3行）的单词
+// 删除光标最近的单词
 commands.registerCommand('dawn-tools.other.word.delete', async () => {
   const match = getNearMatch(/\w+/g)
   if (!match) return
   const editor = window.activeTextEditor!
   await editor.edit((editBuilder) => editBuilder.delete(match.range))
-  editor.selection = new Selection(match.startPosition, match.startPosition)
-  await env.clipboard.writeText(match.value)
+  editor.selection = new Selection(match.range.start, match.range.start)
+  await env.clipboard.writeText(match.text)
   return match
 })
 
-// 删除光标最近（3行）的空白字符
+// 删除光标最近的空白字符
 commands.registerCommand('dawn-tools.other.gap.delete', async () => {
   const match = getNearMatch(/\s+/g)
   if (!match) return
   const editor = window.activeTextEditor!
   editor.edit((editBuilder) => editBuilder.delete(match.range))
-  editor.selection = new Selection(match.startPosition, match.startPosition)
+  editor.selection = new Selection(match.range.start, match.range.start)
   return match
 })
 

@@ -48,13 +48,13 @@ English | [简体中文](./README.zh-CN.md)
 
 ### Others
 
-- `alt + f` Replace the Chinese symbols nearest the cursor (3 lines) with English symbols
+- `alt + f` Replace the Chinese symbols nearest the cursor with English symbols
 
-- `alt + g` Replace the English symbols nearest the cursor (3 lines) with Chinese symbols
+- `alt + g` Replace the English symbols nearest the cursor with Chinese symbols
 
-- `alt + backspace` Delete the word closest to the cursor (3 lines)
+- `alt + backspace` Delete the word closest to the cursor
 
-- `alt + delete` Delete the whitespace closest to the cursor (3 lines)
+- `alt + delete` Delete the whitespace closest to the cursor
 
 - `ctrl + shift + v` Special paste, formatted according to clipboard contents
 

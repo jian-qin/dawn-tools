@@ -244,21 +244,18 @@ export async function selectHtmlAttr(index?: number) {
 export function getNearMatch(reg: RegExp) {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
-  const position = editor.selection.active
-  const range = new Range(position.line && position.line - 1, 0, position.line + 2, 0)
-  const text = editor.document.getText(range)
-  const matchs = [...text.matchAll(reg)]
-  if (!matchs.length) return
-  const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(range.start)
-  const indexs = matchs.map((item) =>
-    Math.min(Math.abs(startIndex - item.index), Math.abs(startIndex - item.index - item[0].length))
-  )
-  const match = matchs[indexs.indexOf(Math.min(...indexs))]
-  const startPosition = editor.document.positionAt(editor.document.offsetAt(range.start) + match.index)
+  const active = editor.document.offsetAt(editor.selection.active)
+  const results = [...editor.document.getText().matchAll(reg)].map((item) => ({
+    text: item[0],
+    start: item.index,
+    end: item.index + item[0].length,
+  }))
+  if (!results.length) return
+  const offsets = results.flatMap(({ start, end }) => [Math.abs(active - start), Math.abs(active - end)])
+  const min = results[Math.floor(offsets.indexOf(Math.min(...offsets)) / 2)]
   return {
-    value: match[0],
-    startPosition,
-    range: new Range(startPosition, positionOffset(startPosition, match[0].length)),
+    text: min.text,
+    range: new Range(editor.document.positionAt(min.start), editor.document.positionAt(min.end)),
   }
 }
 
