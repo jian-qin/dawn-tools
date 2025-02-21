@@ -88,6 +88,17 @@ export function positionOffset(position: Position, offset: number) {
   return document.positionAt(index)
 }
 
+// 范围列表过滤重复项、倒序排序
+export function filterRangeList<T extends any[]>(ranges: T, get = (range: T[number]): Range => range) {
+  const offsetAt = window.activeTextEditor!.document.offsetAt
+  return ranges
+    .reduce<any[]>((prev, range) => {
+      prev.some((range2) => get(range).isEqual(get(range2))) || prev.push(range)
+      return prev
+    }, [])
+    .sort((a, b) => offsetAt(get(b).start) - offsetAt(get(a).start)) as T
+}
+
 // 获取指定位置最近的位置
 export function getNearPosition(position: Position, positions: Position[]) {
   const editor = window.activeTextEditor!
@@ -136,19 +147,17 @@ export function getHtmlEndIndex(beforePosition: Position) {
   return document.positionAt(afterIndex)
 }
 
-// 获取光标所在的标签位置
-export function getNowHtmlTagRange() {
+// 获取标签整体范围
+export function getHtmlTagRange(position: Position) {
   // 循环匹配标签位置
-  let currentPosition = window.activeTextEditor?.selection.active
-  if (!currentPosition) return
   let beforePosition: ReturnType<typeof getHtmlStartIndex>
   let afterPosition: ReturnType<typeof getHtmlEndIndex>
   do {
-    beforePosition = getHtmlStartIndex(currentPosition)
+    beforePosition = getHtmlStartIndex(position)
     if (!beforePosition) return
     afterPosition = getHtmlEndIndex(beforePosition)
     if (afterPosition) break
-    currentPosition = beforePosition
+    position = beforePosition
   } while (true)
   return new Range(beforePosition, afterPosition)
 }
@@ -180,12 +189,14 @@ export function getHtmlAst(tag: string) {
         ]
       : []
   })
+  ast.tag = tag
   interface Attribute {
     content: string // 内容
     startPosition: number // 开始位置
     endPosition: number // 结束位置
   }
   return ast as {
+    tag: string // 标签名
     selfClosing: boolean // 是否自闭合标签
     openStart: Attribute // 标签开始
     openEnd: Attribute // 标签结束
@@ -194,50 +205,53 @@ export function getHtmlAst(tag: string) {
 }
 
 // 判断标签是否单行
-export function tagIsSingleLine(
-  tagRange = getNowHtmlTagRange()!,
-  ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
-) {
-  const editor = window.activeTextEditor!
-  const firstNodePosition = ast.attributes.length ? ast.attributes[0].startPosition : ast.openEnd.startPosition
-  const firstNodeLine = editor.document.positionAt(
-    editor.document.offsetAt(tagRange.start) + firstNodePosition + 1
-  ).line
-  return firstNodeLine === tagRange.start.line
+export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>) {
+  const start = ast.openStart.endPosition + 1
+  const end = ast.attributes.length ? ast.attributes[0].startPosition : ast.openEnd.startPosition
+  return !/\r|\n/.test(ast.tag.slice(start, end))
 }
 
 // 获取光标最近的标签属性
-export function getNearHtmlAttr(
-  tagRange = getNowHtmlTagRange()!,
-  ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
-) {
-  if (!ast.attributes.length) return
+export function getNearHtmlAttr(position: Position) {
+  const tagRange = getHtmlTagRange(position)
+  if (!tagRange) return
+  const ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
+  if (!ast.attributes.length) {
+    return { tagRange, ast } as const
+  }
   const editor = window.activeTextEditor!
-  const startIndex = editor.document.offsetAt(editor.selection.active) - editor.document.offsetAt(tagRange.start)
+  const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(tagRange.start)
   const startOffsets = ast.attributes.map(({ startPosition }) => Math.abs(startIndex - startPosition - 1))
   const endOffsets = ast.attributes.map(({ endPosition }) => Math.abs(startIndex - endPosition))
   const min = Math.min(...startOffsets, ...endOffsets)
-  const positionType = startOffsets.includes(min) ? 'start' : 'end'
+  const type = startOffsets.includes(min) ? 'start' : 'end'
+  const index = (type === 'start' ? startOffsets : endOffsets).indexOf(min)
+  const attrRange = new Range(
+    positionOffset(tagRange.start, (ast.attributes[index - 1] || ast.openStart).endPosition + 1),
+    positionOffset(tagRange.start, ast.attributes[index].endPosition + 1)
+  )
   return {
-    positionType,
-    attr: ast.attributes[(positionType === 'start' ? startOffsets : endOffsets).indexOf(min)],
+    tagRange,
+    type,
+    index,
+    ast,
+    attr: ast.attributes[index],
+    attrRange,
   } as const
 }
 
 // 选中光标所在标签的属性
-export async function selectHtmlAttr(index?: number) {
-  const tagRange = getNowHtmlTagRange()
-  if (!tagRange) return
-  const editor = window.activeTextEditor!
-  const ast = getHtmlAst(editor.document.getText(tagRange))
-  const attr = (typeof index === 'number' && ast.attributes[index]) || getNearHtmlAttr(tagRange, ast)?.attr
-  if (!attr) return
-  editor.selection = new Selection(
-    positionOffset(tagRange.start, (ast.attributes[ast.attributes.indexOf(attr) - 1] || ast.openStart).endPosition + 1),
-    positionOffset(tagRange.start, attr.endPosition + 1)
-  )
-  await waitSelectionChange()
-  return attr
+export function selectHtmlAttrs() {
+  const selections = window.activeTextEditor?.selections || []
+  if (!selections.length) return
+  let attrs = selections.flatMap((selection) => {
+    const attr = getNearHtmlAttr(selection.active)
+    return attr?.attr ? [attr] : []
+  })
+  if (!attrs.length) return
+  attrs = filterRangeList(attrs, ({ attrRange }) => attrRange)
+  window.activeTextEditor!.selections = attrs.map(({ attrRange }) => new Selection(attrRange.start, attrRange.end))
+  return attrs
 }
 
 // 正则匹配光标最近的匹配项
