@@ -18,7 +18,6 @@ commands.registerCommand(
     const _fn = async (tagRange: Range) => {
       const editor = window.activeTextEditor!
       const ast = getHtmlAst(editor.document.getText(tagRange))
-      console.log(ast)
       const end = ast.openEnd.content
       const { tab, br } = getIndentationMode()
       let newTag = ast.openStart.content

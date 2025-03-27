@@ -1,12 +1,16 @@
 import { commands, window, env, Selection, Range } from 'vscode'
 import {
-  waitSelectionChange,
   getNearMatch,
   getIndentationMode,
+  positionOffset,
+  bracketIsSingleLine,
   getBracketAst,
+  selectBracketAttrs,
+  selectBracketAttrs_lastExpand,
   getNearPosition,
-  selectBracketAttr,
+  getNearBracketAttr,
   getLineIndent,
+  filterRangeList,
 } from './tools'
 
 // 特殊粘贴
@@ -80,110 +84,166 @@ commands.registerCommand('dawn-tools.other.gap.delete', async () => {
 })
 
 // 展开/收起光标所在括号内的内容
-commands.registerCommand('dawn-tools.other.bracket', async () => {
-  const nodes = await getBracketAst()
-  if (!nodes?.length) return
-  const editor = window.activeTextEditor!
-  const text = editor.document.getText(editor.selection)
-  const { tab, br } = getIndentationMode()
-  let newText = ''
-  if (nodes[0].start.line !== editor.selection.start.line) {
-    // 换行的缩进-减少
-    newText = nodes.map(({ text }) => text.replaceAll(br + tab, br)).join(', ')
-    newText = text.at(0) === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
-  } else {
-    // 换行的缩进-增加
-    const baseTab = getLineIndent(editor.selection.start.line).text
-    newText = nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
-    newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
-  }
-  await editor.edit((editBuilder) => editBuilder.replace(editor.selection, newText))
-  return newText
-})
+commands.registerCommand(
+  'dawn-tools.other.bracket',
+  (() => {
+    const _fn = async (range: Range) => {
+      const editor = window.activeTextEditor!
+      const text = editor.document.getText(range)
+      const ast = getBracketAst(text)
+      if (!ast?.nodes.length) return
+      const { tab, br } = getIndentationMode()
+      let newText = ''
+      if (positionOffset(range.start, ast.nodes[0].start).line !== range.start.line) {
+        // 换行的缩进-减少
+        newText = ast.nodes.map(({ text }) => text.replaceAll(br + tab, br)).join(', ')
+        newText = text.at(0) === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
+      } else {
+        // 换行的缩进-增加
+        const baseTab = getLineIndent(range.start.line).text
+        newText = ast.nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
+        newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
+      }
+      await editor.edit((editBuilder) => editBuilder.replace(range, newText))
+    }
+    return async () => {
+      const editor = window.activeTextEditor
+      if (!editor?.selections.length) return
+      await commands.executeCommand('editor.action.selectToBracket')
+      const selections = filterRangeList([...editor.selections])
+      if (!selections.length) return
+      for (const selection of selections) {
+        await _fn(selection)
+      }
+    }
+  })()
+)
 
 // 复制光标所在括号内的属性
-commands.registerCommand('dawn-tools.other.json.copy', async (index?: number) => {
-  const node = await selectBracketAttr(index)
-  if (!node) return
-  await env.clipboard.writeText(node.text)
-  return node
+commands.registerCommand('dawn-tools.other.json.copy', async () => {
+  const attrs = await selectBracketAttrs()
+  if (!attrs?.length) return
+  selectBracketAttrs_lastExpand(attrs)
+  const delimiter = attrs.find(({ ast }) => ast.nodes.length > 1)?.ast.delimiter || ','
+  const value = attrs.reduce((text, { attr }) => text + attr.text + delimiter, '')
+  env.clipboard.writeText(value)
 })
 
 // 删除光标所在括号内的属性
-commands.registerCommand('dawn-tools.other.json.delete', async (index?: number) => {
-  const node = await commands.executeCommand('dawn-tools.other.json.copy', index)
-  if (!node) return
-  await commands.executeCommand('deleteLeft')
-  return node
+commands.registerCommand('dawn-tools.other.json.delete', async () => {
+  const attrs = await selectBracketAttrs()
+  if (!attrs?.length) return
+  selectBracketAttrs_lastExpand(attrs)
+  commands.executeCommand('deleteLeft')
 })
 
 // 粘贴光标所在括号内的属性
-commands.registerCommand('dawn-tools.other.json.paste', async () => {
-  let text = (await env.clipboard.readText()).trim().replace(/\s*,|;$/, '')
-  if (!text) return
-  const nodes = await getBracketAst()
-  if (!nodes) return
-  const editor = window.activeTextEditor!
-  const selectionText = editor.document.getText(editor.selection)
-  const { tab, br } = getIndentationMode()
-  const baseTab = getLineIndent(editor.selection.start.line).text
-  let editRange: Range
-  let newIndex = 0
-  if (nodes.length) {
-    // 有属性
-    const nearPosition = getNearPosition(
-      nodes.active,
-      nodes.flatMap(({ start, end }) => [start, end])
-    )
-    const positionType = nodes.some(({ start }) => nearPosition === start) ? 'start' : 'end'
-    const nearNode = nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
-    newIndex = nodes.indexOf(nearNode) + (positionType === 'start' ? 0 : 1)
-    const isSingleLine = editor.selection.start.line === nodes[0].start.line
-    // 分隔符
-    let delimiter = editor.document
-      .getText(new Range(nodes[0].end, nodes[1]?.start || editor.selection.end.translate(0, -1)))
-      .trim()
-    if (!delimiter && nodes.length === 1) {
-      delimiter = ','
+commands.registerCommand(
+  'dawn-tools.other.json.paste',
+  (() => {
+    const _fn = (
+      { tagRange, tagText, ast, attr, index, type }: NonNullable<ReturnType<typeof getNearBracketAttr>>,
+      texts: string[],
+      delimiter: string
+    ) => {
+      const { tab, br } = getIndentationMode()
+      const baseTab = getLineIndent(tagRange.start.line).text
+      const isSingleLine = bracketIsSingleLine(ast)
+      if (ast.nodes.length > 1) {
+        delimiter = ast.delimiter
+      }
+      delimiter = delimiter.trim()
+      if (isSingleLine && !delimiter) {
+        delimiter = ','
+      }
+      const air = delimiter + (isSingleLine ? ' ' : `${br}${baseTab}${tab}`)
+      const tagStartAir = isSingleLine ? (tagText[0] === '{' ? ' ' : '') : `${br}${baseTab}${tab}`
+      const tagEndAir = isSingleLine ? (tagText[0] === '{' ? ' ' : '') : `${br}${baseTab}`
+      let editOffset: {
+        start: number
+        end: number
+      }
+      let text = texts.join(air)
+      if (attr) {
+        // 有属性
+        if (index === 0 && type === 'start') {
+          // 第一个属性
+          editOffset = {
+            start: 1,
+            end: attr.start,
+          }
+          text = `${tagStartAir}${text}${air}`
+        } else if (index === ast.nodes.length - 1 && type === 'end') {
+          // 最后一个属性
+          editOffset = {
+            start: attr.end,
+            end: tagText.length - 1,
+          }
+          text = `${air}${text}${tagEndAir}`
+        } else {
+          // 中间的属性
+          editOffset =
+            type === 'start'
+              ? {
+                  start: ast.nodes[index - 1].end,
+                  end: attr.start,
+                }
+              : {
+                  start: attr.end,
+                  end: ast.nodes[index + 1].start,
+                }
+          text = `${air}${text}${air}`
+        }
+      } else {
+        // 无属性
+        editOffset = {
+          start: 1,
+          end: tagText.length - 1,
+        }
+        text = `${tagStartAir}${text}${tagEndAir}`
+      }
+      return {
+        range: new Range(
+          positionOffset(tagRange.start, editOffset.start),
+          positionOffset(tagRange.start, editOffset.end)
+        ),
+        text,
+      }
     }
-    if (nearPosition === nodes[0].start) {
-      // 第一个属性
-      editRange = new Range(editor.selection.start.translate(0, 1), nodes[0].start)
-      text = isSingleLine
-        ? `${selectionText[0] === '{' ? ' ' : ''}${text}${delimiter} `
-        : `${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
-    } else if (nearPosition === nodes.at(-1)!.end) {
-      // 最后一个属性
-      editRange = new Range(nodes.at(-1)!.end, editor.selection.end.translate(0, -1))
-      text = isSingleLine
-        ? `${delimiter} ${text}${selectionText[0] === '{' ? ' ' : ''}`
-        : `${delimiter}${br}${baseTab}${tab}${text}${br}${baseTab}`
-    } else {
-      // 中间的属性
-      editRange =
-        positionType === 'start'
-          ? new Range(nodes[nodes.indexOf(nearNode) - 1].end, nearNode.start)
-          : new Range(nearNode.end, nodes[nodes.indexOf(nearNode) + 1].start)
-      text = isSingleLine
-        ? `${delimiter} ${text}${delimiter} `
-        : `${delimiter}${br}${baseTab}${tab}${text}${delimiter}${br}${baseTab}${tab}`
+    return async () => {
+      const editor = window.activeTextEditor
+      if (!editor?.selections.length) return
+      const text = (await env.clipboard.readText()).trim()
+      if (!text) return
+      const actives = editor.selections.map(({ active }) => active)
+      await commands.executeCommand('editor.action.selectToBracket')
+      const positions = editor.selections.flatMap(({ start, end }) => [start, end])
+      const attrs = actives.flatMap((active) => {
+        const position = getNearPosition(active, positions)
+        const selection = editor.selections.find(({ start, end }) => start.isEqual(position) || end.isEqual(position))!
+        const attr = getNearBracketAttr(selection, active)
+        return attr ? [attr] : []
+      })
+      if (!attrs.length) return
+      const wrap = editor.document.getText(editor.selection)
+      const ast = getBracketAst(`${wrap.at(0)}${text}${wrap.at(-1)}`)
+      if (!ast) return
+      const texts = ast.nodes.map(({ text }) => text)
+      const editorDatas = filterRangeList(
+        attrs.map((item) => _fn(item, texts, ast.delimiter)),
+        ({ range }) => range
+      )
+      editor.selections = editorDatas.map(
+        ({ range }) => new Selection(range.start, range.isEmpty ? range.end.translate(0, 1) : range.end)
+      )
+      for (const { range, text } of editorDatas) {
+        await editor.edit((editBuilder) => editBuilder.replace(range, text))
+      }
+      if (editorDatas.some(({ range }) => range.isEmpty)) {
+        editor.selections = editor.selections.map((selection, index) =>
+          editorDatas[index].range.isEmpty ? new Selection(selection.start, selection.end.translate(0, -1)) : selection
+        )
+      }
     }
-  } else {
-    // 无属性
-    editRange = editor.selection
-    const start = selectionText.at(0)
-    const end = selectionText.at(-1)
-    if (editor.selection.isSingleLine) {
-      text = start === '{' ? `{ ${text} }` : `${start}${text}${end}`
-    } else {
-      text = `${start}${br}${baseTab}${tab}${text}${br}${baseTab}${end}`
-    }
-  }
-  await editor.edit((editBuilder) => editBuilder.replace(editRange, text))
-  {
-    const position = editor.selection.start.translate(0, 1)
-    editor.selection = new Selection(position, position)
-    await waitSelectionChange()
-  }
-  await selectBracketAttr(newIndex)
-})
+  })()
+)

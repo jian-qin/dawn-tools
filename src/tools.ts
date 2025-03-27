@@ -215,11 +215,12 @@ export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>) {
 export function getNearHtmlAttr(position: Position) {
   const tagRange = getHtmlTagRange(position)
   if (!tagRange) return
-  const ast = getHtmlAst(window.activeTextEditor!.document.getText(tagRange))
-  if (!ast.attributes.length) {
-    return { tagRange, ast } as const
-  }
   const editor = window.activeTextEditor!
+  const tagText = editor.document.getText(tagRange)
+  const ast = getHtmlAst(tagText)
+  if (!ast.attributes.length) {
+    return { tagRange, tagText, ast } as const
+  }
   const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(tagRange.start)
   const startOffsets = ast.attributes.map(({ startPosition }) => Math.abs(startIndex - startPosition - 1))
   const endOffsets = ast.attributes.map(({ endPosition }) => Math.abs(startIndex - endPosition))
@@ -232,6 +233,7 @@ export function getNearHtmlAttr(position: Position) {
   )
   return {
     tagRange,
+    tagText,
     type,
     index,
     ast,
@@ -274,78 +276,135 @@ export function getNearMatch(reg: RegExp) {
 }
 
 // 获取光标所在括号内的内容ast
-export async function getBracketAst() {
-  const editor = window.activeTextEditor
-  if (!editor?.selection) return
-  const active = editor.selection.active
-  await commands.executeCommand('editor.action.selectToBracket')
-  if (editor.selection.isEmpty) return
-  const text = editor.document.getText(editor.selection)
+export function getBracketAst(text: string) {
   if (!['(', '[', '{', '<'].includes(text[0])) return
+  let delimiter = ','
   if (!text.replace(/^.(.+).$/s, '$1').trim()) {
-    return Object.assign([], { active })
+    return { text, delimiter, nodes: [] }
   }
   let _text = ''
-  let nodes: { pos: number; end: number }[] = []
+  let _nodes: { pos: number; end: number }[] = []
   const astFn = (newText: string) =>
     // @ts-ignore
     createSourceFile('temp.ts', (_text = newText), ScriptTarget.Latest).statements[0].expression
   if (text[0] === '(') {
-    nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
+    _nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
   } else if (text[0] === '[') {
-    nodes = astFn(text).elements
+    _nodes = astFn(text).elements
   } else if (text[0] === '{') {
-    nodes = astFn(`[${text}]`).elements[0].properties
+    _nodes = astFn(`[${text}]`).elements[0].properties
   } else if (text[0] === '<') {
-    nodes = astFn(`fn${text}`).typeArguments
+    _nodes = astFn(`fn${text}`).typeArguments
   }
-  if (!nodes) return
-  const startIndex = editor.document.offsetAt(editor.selection.start)
-  let currentIndex = 0
-  return Object.assign(
-    nodes.map((item) => {
-      const content = _text.substring(item.pos, item.end).trim()
-      const index = text.indexOf(content, currentIndex)
-      currentIndex = index + content.length
-      return {
-        text: content,
-        start: editor.document.positionAt(startIndex + index),
-        end: editor.document.positionAt(startIndex + currentIndex),
-      }
-    }),
-    { active }
+  if (!_nodes) return
+  let end = 0
+  const nodes = _nodes.map((item) => {
+    const content = _text.substring(item.pos, item.end).trim()
+    const start = text.indexOf(content, end)
+    end = start + content.length
+    return {
+      text: content,
+      start,
+      end,
+    }
+  })
+  if (nodes.length) {
+    delimiter = text.slice(nodes[0].end).match(/^\s*(\S)/)![1]
+    if (![',', ';'].includes(delimiter)) {
+      delimiter = ''
+    }
+    delimiter ||= nodes.length === 1 ? ',' : getIndentationMode().br
+  }
+  return { text, delimiter, nodes }
+}
+
+// 判断括号是否单行
+export function bracketIsSingleLine(ast: NonNullable<ReturnType<typeof getBracketAst>>) {
+  const end = ast.nodes.length ? ast.nodes[0].start : ast.text.length - 1
+  return !/\r|\n/.test(ast.text.slice(1, end))
+}
+
+// 获取光标所在括号内的属性
+export function getNearBracketAttr(tagRange: Range, position: Position) {
+  const editor = window.activeTextEditor!
+  const tagText = editor.document.getText(tagRange)
+  const ast = getBracketAst(tagText)
+  if (!ast) return
+  if (!ast.nodes.length) {
+    return { tagRange, tagText, ast } as const
+  }
+  const startIndex = editor.document.offsetAt(position) - editor.document.offsetAt(tagRange.start)
+  const startOffsets = ast.nodes.map(({ start }) => Math.abs(startIndex - start))
+  const endOffsets = ast.nodes.map(({ end }) => Math.abs(startIndex - end))
+  const min = Math.min(...startOffsets, ...endOffsets)
+  const type = startOffsets.includes(min) ? 'start' : 'end'
+  const index = (type === 'start' ? startOffsets : endOffsets).indexOf(min)
+  const attr = ast.nodes[index]
+  const attrRange = new Range(
+    positionOffset(tagRange.start, attr.start),
+    positionOffset(
+      tagRange.start,
+      index === ast.nodes.length - 1 ? tagText.match(/(?<=\S)\s*.$/)!.index! : ast.nodes[index + 1].start
+    )
   )
+  return {
+    tagRange,
+    tagText,
+    type,
+    index,
+    ast,
+    attr,
+    attrRange,
+  } as const
 }
 
 // 选中光标所在括号内的属性
-export async function selectBracketAttr(index?: number) {
-  const nodes = await getBracketAst()
-  if (!nodes?.length) return
-  const editor = window.activeTextEditor!
-  const nearPosition = getNearPosition(
-    nodes.active,
-    nodes.flatMap(({ start, end }) => [start, end])
-  )
-  const nearNode =
-    (typeof index === 'number' && nodes[index]) ||
-    nodes.find(({ start, end }) => nearPosition === start || nearPosition === end)!
-  let { start, end } = nearNode
-  if (nodes.length === 1) {
-    // 只有一个属性
-    start = positionOffset(editor.selection.start, 1)
-    end = positionOffset(editor.selection.end, -1)
-  } else if (nodes.at(-1) === nearNode) {
-    // 最后一个属性
-    start = nodes[nodes.indexOf(nearNode) - 1].end
-    const afterText = editor.document.getText(new Range(nearNode.end, editor.selection.end))
-    const offset = afterText.match(/,|;/)
-    if (offset) {
-      end = positionOffset(nearNode.end, offset.index! + 1)
+export async function selectBracketAttrs() {
+  const editor = window.activeTextEditor
+  if (!editor) return
+  const actives = editor.selections.map(({ active }) => active)
+  if (!actives.length) return
+  await commands.executeCommand('editor.action.selectToBracket')
+  const positions = editor.selections.flatMap(({ start, end }) => [start, end])
+  let attrs = actives.flatMap((active) => {
+    const position = getNearPosition(active, positions)
+    const selection = editor.selections.find(({ start, end }) => start.isEqual(position) || end.isEqual(position))!
+    const attr = getNearBracketAttr(selection, active)
+    return attr?.attr ? [attr] : []
+  })
+  if (!attrs.length) return
+  attrs = filterRangeList(attrs, ({ attrRange }) => attrRange).reverse()
+  editor.selections = attrs.map(({ attrRange }) => new Selection(attrRange.start, attrRange.end))
+  return attrs
+}
+
+// 选中光标所在括号内的属性-最后一个元素扩选前面的空格
+export function selectBracketAttrs_lastExpand(attrs: Awaited<ReturnType<typeof selectBracketAttrs>>) {
+  if (!attrs?.length) return
+  let indexs = attrs.flatMap(({ index, ast }, i) => (ast.nodes.length > 1 && ast.nodes.length - 1 === index ? [i] : []))
+  const getFirstIndex = (_index: number) => {
+    const firstIndex = attrs.findIndex(
+      ({ tagRange, index }) => tagRange.isEqual(attrs[_index].tagRange) && index === attrs[_index].index - 1
+    )
+    if (firstIndex === -1) {
+      return _index
     }
-  } else {
-    end = nodes[nodes.indexOf(nearNode) + 1].start
+    if (attrs[firstIndex].index === 0) {
+      return -1
+    }
+    return getFirstIndex(firstIndex)
   }
-  editor.selection = new Selection(start, end)
-  await waitSelectionChange()
-  return nearNode
+  indexs = indexs.flatMap((index) => {
+    const _index = getFirstIndex(index)
+    return _index === -1 ? [] : [_index]
+  })
+  if (indexs.length) {
+    window.activeTextEditor!.selections = attrs.map(({ attrRange, tagRange }, index) => {
+      let start = attrRange.start
+      if (indexs.includes(index)) {
+        start = positionOffset(tagRange.start, attrs[index].ast.nodes[attrs[index].index - 1].end)
+      }
+      return new Selection(start, attrRange.end)
+    })
+  }
 }
