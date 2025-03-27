@@ -1,6 +1,6 @@
 import { commands, window, env, Selection, Range } from 'vscode'
 import {
-  getNearMatch,
+  getNearMatchs,
   getIndentationMode,
   positionOffset,
   bracketIsSingleLine,
@@ -53,34 +53,36 @@ const symbol_values_reg = new RegExp(`(${symbol_values.map((val) => '\\' + val).
 
 // 替换光标最近的特殊符号
 commands.registerCommand('dawn-tools.other.symbol', async (mode: 'toEN' | 'toCN') => {
-  const match = getNearMatch(mode === 'toEN' ? symbol_keys_reg : symbol_values_reg)
-  if (!match) return
-  const editor = window.activeTextEditor!
-  const value =
-    mode === 'toEN' ? symbol_map[match.text as keyof typeof symbol_map] : symbol_keys[symbol_values.indexOf(match.text)]
-  await editor.edit((editBuilder) => editBuilder.replace(match.range, value))
-  return value
+  const matchs = getNearMatchs(mode === 'toEN' ? symbol_keys_reg : symbol_values_reg)
+  if (!matchs) return
+  window.activeTextEditor!.edit((editBuilder) =>
+    matchs.forEach((match) => {
+      const value =
+        mode === 'toEN'
+          ? symbol_map[match.text as keyof typeof symbol_map]
+          : symbol_keys[symbol_values.indexOf(match.text)]
+      editBuilder.replace(match.range, value)
+    })
+  )
 })
 
 // 删除光标最近的单词
 commands.registerCommand('dawn-tools.other.word.delete', async () => {
-  const match = getNearMatch(/\w+/g)
-  if (!match) return
+  const matchs = getNearMatchs(/\w+/g)
+  if (!matchs) return
   const editor = window.activeTextEditor!
-  await editor.edit((editBuilder) => editBuilder.delete(match.range))
-  editor.selection = new Selection(match.range.start, match.range.start)
-  await env.clipboard.writeText(match.text)
-  return match
+  editor.selections = matchs.map(({ range }) => new Selection(range.start, range.start))
+  editor.edit((editBuilder) => matchs.forEach(({ range }) => editBuilder.delete(range)))
+  env.clipboard.writeText(matchs.map(({ text }) => text).join('\n'))
 })
 
 // 删除光标最近的空白字符
 commands.registerCommand('dawn-tools.other.gap.delete', async () => {
-  const match = getNearMatch(/\s+/g)
-  if (!match) return
+  const matchs = getNearMatchs(/\s+/g)
+  if (!matchs) return
   const editor = window.activeTextEditor!
-  editor.edit((editBuilder) => editBuilder.delete(match.range))
-  editor.selection = new Selection(match.range.start, match.range.start)
-  return match
+  editor.selections = matchs.map(({ range }) => new Selection(range.start, range.start))
+  editor.edit((editBuilder) => matchs.forEach(({ range }) => editBuilder.delete(range)))
 })
 
 // 展开/收起光标所在括号内的内容

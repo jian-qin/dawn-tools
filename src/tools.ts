@@ -257,22 +257,24 @@ export function selectHtmlAttrs() {
 }
 
 // 正则匹配光标最近的匹配项
-export function getNearMatch(reg: RegExp) {
+export function getNearMatchs(reg: RegExp) {
   const editor = window.activeTextEditor
-  if (!editor?.selection) return
-  const active = editor.document.offsetAt(editor.selection.active)
+  if (!editor?.selections.length) return
   const results = [...editor.document.getText().matchAll(reg)].map((item) => ({
     text: item[0],
     start: item.index,
     end: item.index + item[0].length,
   }))
   if (!results.length) return
-  const offsets = results.flatMap(({ start, end }) => [Math.abs(active - start), Math.abs(active - end)])
-  const min = results[Math.floor(offsets.indexOf(Math.min(...offsets)) / 2)]
-  return {
-    text: min.text,
-    range: new Range(editor.document.positionAt(min.start), editor.document.positionAt(min.end)),
-  }
+  return editor.selections.map(({ active }) => {
+    const index = editor.document.offsetAt(active)
+    const offsets = results.flatMap(({ start, end }) => [Math.abs(index - start), Math.abs(index - end)])
+    const min = results[Math.floor(offsets.indexOf(Math.min(...offsets)) / 2)]
+    return {
+      text: min.text,
+      range: new Range(editor.document.positionAt(min.start), editor.document.positionAt(min.end)),
+    }
+  })
 }
 
 // 获取光标所在括号内的内容ast
