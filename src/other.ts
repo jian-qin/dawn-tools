@@ -89,7 +89,7 @@ commands.registerCommand('dawn-tools.other.gap.delete', async () => {
 commands.registerCommand(
   'dawn-tools.other.bracket',
   (() => {
-    const _fn = async (range: Range) => {
+    const _fn = (range: Range) => {
       const editor = window.activeTextEditor!
       const text = editor.document.getText(range)
       const ast = getBracketAst(text)
@@ -106,7 +106,7 @@ commands.registerCommand(
         newText = ast.nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
         newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
       }
-      await editor.edit((editBuilder) => editBuilder.replace(range, newText))
+      return newText
     }
     return async () => {
       const editor = window.activeTextEditor
@@ -114,9 +114,12 @@ commands.registerCommand(
       await commands.executeCommand('editor.action.selectToBracket')
       const selections = filterRangeList([...editor.selections])
       if (!selections.length) return
-      for (const selection of selections) {
-        await _fn(selection)
-      }
+      editor.edit((editBuilder) =>
+        selections.forEach((selection) => {
+          const text = _fn(selection)
+          text && editBuilder.replace(selection, text)
+        })
+      )
     }
   })()
 )
@@ -238,9 +241,7 @@ commands.registerCommand(
       editor.selections = editorDatas.map(
         ({ range }) => new Selection(range.start, range.isEmpty ? range.end.translate(0, 1) : range.end)
       )
-      for (const { range, text } of editorDatas) {
-        await editor.edit((editBuilder) => editBuilder.replace(range, text))
-      }
+      await editor.edit((editBuilder) => editorDatas.forEach(({ range, text }) => editBuilder.replace(range, text)))
       if (editorDatas.some(({ range }) => range.isEmpty)) {
         editor.selections = editor.selections.map((selection, index) =>
           editorDatas[index].range.isEmpty ? new Selection(selection.start, selection.end.translate(0, -1)) : selection

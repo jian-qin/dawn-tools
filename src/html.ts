@@ -15,7 +15,7 @@ import {
 commands.registerCommand(
   'dawn-tools.html.format',
   (() => {
-    const _fn = async (tagRange: Range) => {
+    const _fn = (tagRange: Range) => {
       const editor = window.activeTextEditor!
       const ast = getHtmlAst(editor.document.getText(tagRange))
       const end = ast.openEnd.content
@@ -39,20 +39,17 @@ commands.registerCommand(
         }
         newTag += `${ast.selfClosing ? ' ' : ''}${end}`
       }
-      // 设置新的标签
-      await editor.edit((editBuilder) => editBuilder.replace(tagRange, newTag))
+      return newTag
     }
     return async () => {
-      const selections = window.activeTextEditor?.selections || []
-      if (!selections.length) return
+      const editor = window.activeTextEditor
+      if (!editor?.selections.length) return
       const tagRanges = filterRangeList(
-        selections.map((selection) => getHtmlTagRange(selection.active)).filter(Boolean) as Range[]
+        editor.selections.map((selection) => getHtmlTagRange(selection.active)).filter(Boolean) as Range[]
       )
       if (!tagRanges.length) return
-      window.activeTextEditor!.selections = tagRanges.map((range) => new Selection(range.start, range.end))
-      for (const range of tagRanges) {
-        await _fn(range)
-      }
+      editor.selections = tagRanges.map((range) => new Selection(range.start, range.end))
+      editor.edit((editBuilder) => tagRanges.forEach((range) => editBuilder.replace(range, _fn(range))))
     }
   })()
 )
@@ -157,9 +154,7 @@ commands.registerCommand(
       editor.selections = editorDatas.map(
         ({ range }) => new Selection(range.start, range.isEmpty ? range.end.translate(0, 1) : range.end)
       )
-      for (const { range, text } of editorDatas) {
-        await editor.edit((editBuilder) => editBuilder.replace(range, text))
-      }
+      await editor.edit((editBuilder) => editorDatas.forEach(({ range, text }) => editBuilder.replace(range, text)))
       if (editorDatas.some(({ range }) => range.isEmpty)) {
         editor.selections = editor.selections.map((selection, index) =>
           editorDatas[index].range.isEmpty ? new Selection(selection.start, selection.end.translate(0, -1)) : selection
