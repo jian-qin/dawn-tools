@@ -1,5 +1,5 @@
 import { commands, window, env, Selection, Range } from 'vscode'
-import { insertLineIfNotEmpty, formatFilePath, getRootPath, getFileName } from './tools'
+import { formatFilePath, getRootPath, getFileName, getLineIndent, getIndentationMode } from './tools'
 
 // 复制文件名
 commands.registerCommand('dawn-tools.file.copy.name', async (file) => {
@@ -97,13 +97,18 @@ commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
     text = `const ${fileName} = require('${text}')${endSymbol}`
     startCharacter = 6
   }
-  await insertLineIfNotEmpty()
+  if (!editor.document.lineAt(editor.selection.active.line).isEmptyOrWhitespace) {
+    await commands.executeCommand('editor.action.insertLineAfter')
+  }
+  const nextLine = editor.selection.active.line + 1
+  if (nextLine <= editor.document.lineCount) {
+    const { text: lineText, isEmptyOrWhitespace } = editor.document.lineAt(nextLine)
+    if (!isEmptyOrWhitespace && !require_reg.test(lineText) && !import_reg.test(lineText)) {
+      text += getIndentationMode().br + getLineIndent(nextLine).text
+    }
+  }
+  const { line, character } = editor.selection.active
   await editor.edit((editBuilder) => editBuilder.insert(editor.selection.active, text))
-  editor.selection = new Selection(
-    editor.selection.active.line,
-    startCharacter,
-    editor.selection.active.line,
-    startCharacter + fileName.length
-  )
+  editor.selection = new Selection(line, character + startCharacter, line, character + startCharacter + fileName.length)
   return text
 })

@@ -13,19 +13,6 @@ export function waitSelectionChange() {
   })
 }
 
-// 当前行不为空行时，向下插入一行
-export async function insertLineIfNotEmpty() {
-  const editor = window.activeTextEditor!
-  if (editor.selection.start.line !== editor.selection.end.line) {
-    // 多行选中时，光标右移跳转到最后一行，避免插入行的位置不对
-    await commands.executeCommand('cursorRight')
-  }
-  const isEmptyLine = editor.document.lineAt(editor.selection.active.line).isEmptyOrWhitespace
-  if (!isEmptyLine) {
-    await commands.executeCommand('editor.action.insertLineAfter')
-  }
-}
-
 // 格式化文件路径（统一斜杠、大小写盘符、去除盘符前的斜杠）
 export function formatFilePath(path: string) {
   return path
