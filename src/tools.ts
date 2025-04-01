@@ -351,9 +351,28 @@ export function getNearBracketAttr(tagRange: Range, position: Position) {
 export async function selectBracketAttrs() {
   const editor = window.activeTextEditor
   if (!editor) return
-  const actives = editor.selections.map(({ active }) => active)
+  let actives = editor.selections.map(({ active }) => active)
   if (!actives.length) return
   await commands.executeCommand('editor.action.selectToBracket')
+  {
+    // 选中空括号
+    const indexs = editor.selections
+      .map((selection) => editor.document.getText(selection))
+      .flatMap((text, index) => (text && !text.replace(/^.(.+).$/s, '$1').trim() ? [index] : []))
+    if (indexs.length) {
+      editor.selections = editor.selections.map((selection, index) => {
+        if (indexs.includes(index)) {
+          const position = positionOffset(selection.end, 1)
+          return new Selection(position, position)
+        }
+        return selection
+      })
+      await commands.executeCommand('editor.action.selectToBracket')
+    }
+  }
+  actives = actives.filter((active) =>
+    editor.selections.some((selection) => !selection.isEmpty && selection.contains(active))
+  )
   const positions = editor.selections.flatMap(({ start, end }) => [start, end])
   let attrs = actives.flatMap((active) => {
     const position = getNearPosition(active, positions)

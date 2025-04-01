@@ -220,8 +220,11 @@ commands.registerCommand(
       if (!editor?.selections.length) return
       const text = (await env.clipboard.readText()).trim()
       if (!text) return
-      const actives = editor.selections.map(({ active }) => active)
+      let actives = editor.selections.map(({ active }) => active)
       await commands.executeCommand('editor.action.selectToBracket')
+      actives = actives.filter((active) =>
+        editor.selections.some((selection) => !selection.isEmpty && selection.contains(active))
+      )
       const positions = editor.selections.flatMap(({ start, end }) => [start, end])
       const attrs = actives.flatMap((active) => {
         const position = getNearPosition(active, positions)
