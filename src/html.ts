@@ -1,4 +1,5 @@
 import { commands, window, Selection, env, Range } from 'vscode'
+import { selectionsHistory } from './store'
 import {
   getHtmlTagRange,
   filterRangeList,
@@ -56,15 +57,18 @@ commands.registerCommand(
 
 // 复制光标所在标签的属性
 commands.registerCommand('dawn-tools.html.attr.copy', async () => {
+  const text = html_attr_copy()
+  if (!text) return
+  env.clipboard.writeText(text)
+})
+function html_attr_copy() {
   const attrs = selectHtmlAttrs()
   if (!attrs) return
-  env.clipboard.writeText(
-    attrs
-      .map(({ ast, index }) => ast.attributes[index].content)
-      .reverse()
-      .join(' ')
-  )
-})
+  return attrs
+    .map(({ ast, index }) => ast.attributes[index].content)
+    .reverse()
+    .join(' ')
+}
 
 // 删除光标所在标签的属性
 commands.registerCommand('dawn-tools.html.attr.delete', async () => {
@@ -134,10 +138,10 @@ commands.registerCommand(
         text,
       }
     }
-    return async () => {
+    return async (text?: string) => {
       const editor = window.activeTextEditor
       if (!editor?.selections.length) return
-      const text = (await env.clipboard.readText()).trim()
+      text ??= (await env.clipboard.readText()).trim()
       if (!text) return
       const attrs = editor.selections.flatMap((selection) => {
         const attr = getNearHtmlAttr(selection.active)
@@ -161,3 +165,19 @@ commands.registerCommand(
     }
   })()
 )
+
+// 移动上一个光标所在标签的属性到当前光标所在标签
+commands.registerCommand('dawn-tools.html.attr.move', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  const before = selectionsHistory.at(-2)
+  if (!before) return
+  const current = selectionsHistory.at(-1)!
+  editor.selections = before
+  const text = html_attr_copy()
+  if (!text) return
+  const selections = editor.selections
+  editor.selections = current
+  await editor.edit((editBuilder) => selections.forEach((selection) => editBuilder.delete(selection)))
+  commands.executeCommand('dawn-tools.html.attr.paste', text)
+})

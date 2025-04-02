@@ -20,7 +20,9 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + shift + c` Copy the attribute of the tab closest to the cursor in the tab where the cursor is located
 
-- `ctrl + shift + d` Execute `ctrl + shift + c` and then delete
+- `ctrl + shift + d` Delete the attribute of the tab closest to the cursor in the tab where the cursor is located
+
+- `ctrl + shift + x` Move the attributes of the previous cursor's tab to the current cursor's tab
 
 ### js/ts
 
@@ -28,9 +30,11 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + alt + c` Copy the item in parentheses ((), [], {}, <>) where the cursor is located
 
-- `ctrl + alt + d` Execute `ctrl + alt + c` and then delete
+- `ctrl + alt + d` Delete the item in parentheses ((), [], {}, <>) where the cursor is located
 
 - `ctrl + alt + v` Paste after the attribute closest to the cursor in the parentheses where the cursor is located
+
+- `ctrl + alt + x` Move the item in the parentheses where the cursor was last placed to the parentheses where the cursor is currently placed
 
 ### vue
 

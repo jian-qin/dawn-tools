@@ -95,6 +95,11 @@
         "when": "editorTextFocus"
       },
       {
+        "key": "ctrl+shift+x",
+        "command": "dawn-tools.html.attr.move",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "alt+q",
         "command": "dawn-tools.snippets.log",
         "when": "editorTextFocus"
@@ -144,6 +149,11 @@
       {
         "key": "ctrl+alt+v",
         "command": "dawn-tools.other.json.paste",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+alt+x",
+        "command": "dawn-tools.other.json.move",
         "when": "editorTextFocus"
       },
       {

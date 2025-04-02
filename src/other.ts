@@ -1,4 +1,5 @@
 import { commands, window, env, Selection, Range } from 'vscode'
+import { selectionsHistory } from './store'
 import {
   getNearMatchs,
   getIndentationMode,
@@ -126,13 +127,17 @@ commands.registerCommand(
 
 // 复制光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.copy', async () => {
+  const text = await other_json_copy()
+  if (!text) return
+  env.clipboard.writeText(text)
+})
+async function other_json_copy() {
   const attrs = await selectBracketAttrs()
   if (!attrs?.length) return
   selectBracketAttrs_lastExpand(attrs)
   const delimiter = attrs.find(({ ast }) => ast.nodes.length > 1)?.ast.delimiter || ','
-  const value = attrs.reduce((text, { ast, index }) => text + ast.nodes[index].text + delimiter, '')
-  env.clipboard.writeText(value)
-})
+  return attrs.reduce((text, { ast, index }) => text + ast.nodes[index].text + delimiter, '')
+}
 
 // 删除光标所在括号内的属性
 commands.registerCommand('dawn-tools.other.json.delete', async () => {
@@ -216,10 +221,10 @@ commands.registerCommand(
         text,
       }
     }
-    return async () => {
+    return async (text?: string) => {
       const editor = window.activeTextEditor
       if (!editor?.selections.length) return
-      const text = (await env.clipboard.readText()).trim()
+      text ??= (await env.clipboard.readText()).trim()
       if (!text) return
       let actives = editor.selections.map(({ active }) => active)
       await commands.executeCommand('editor.action.selectToBracket')
@@ -254,3 +259,19 @@ commands.registerCommand(
     }
   })()
 )
+
+// 移动上一个光标所在括号的属性到当前光标所在括号
+commands.registerCommand('dawn-tools.other.json.move', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  const before = selectionsHistory.at(-2)
+  if (!before) return
+  const current = selectionsHistory.at(-1)!
+  editor.selections = before
+  const text = await other_json_copy()
+  if (!text) return
+  const selections = editor.selections
+  editor.selections = current
+  await editor.edit((editBuilder) => selections.forEach((selection) => editBuilder.delete(selection)))
+  commands.executeCommand('dawn-tools.other.json.paste', text)
+})
