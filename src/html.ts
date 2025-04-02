@@ -77,10 +77,7 @@ commands.registerCommand('dawn-tools.html.attr.delete', async () => {
 commands.registerCommand(
   'dawn-tools.html.attr.paste',
   (() => {
-    const _fn = (
-      { tagRange, ast, attr, index, type }: NonNullable<ReturnType<typeof getNearHtmlAttr>>,
-      texts: string[]
-    ) => {
+    const _fn = ({ tagRange, ast, index, type }: NonNullable<ReturnType<typeof getNearHtmlAttr>>, texts: string[]) => {
       const { tab, br } = getIndentationMode()
       const baseTab = getLineIndent(tagRange.start.line).text
       const isSingleLine = tagIsSingleLine(ast)
@@ -92,6 +89,7 @@ commands.registerCommand(
       let text = air + texts.join(air)
       if (type) {
         // 有属性
+        const attr = ast.attributes[index]
         if (index === 0 && type === 'start') {
           // 第一个属性
           editOffset = {

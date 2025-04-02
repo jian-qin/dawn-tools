@@ -234,7 +234,6 @@ export function getNearHtmlAttr(position: Position) {
     type,
     index,
     ast,
-    attr: ast.attributes[index],
     attrsRange,
     itemsRange,
   } as const
@@ -257,7 +256,6 @@ export function selectHtmlAttrs() {
       .map((index) => ({
         ...attr,
         index,
-        attr: attr.ast.attributes[index],
       }))
   })
   if (!attrs.length) return
@@ -353,13 +351,16 @@ export function getNearBracketAttr(tagRange: Range, position: Position) {
   const min = Math.min(...startOffsets, ...endOffsets)
   const type = startOffsets.includes(min) ? 'start' : 'end'
   const index = (type === 'start' ? startOffsets : endOffsets).indexOf(min)
-  const attr = ast.nodes[index]
-  const attrRange = new Range(
-    positionOffset(tagRange.start, attr.start),
-    positionOffset(
-      tagRange.start,
-      index === ast.nodes.length - 1 ? tagText.match(/(?<=\S)\s*.$/)!.index! : ast.nodes[index + 1].start
-    )
+  const attrsRange = ast.nodes.map(
+    ({ start, end }) => new Range(positionOffset(tagRange.start, start), positionOffset(tagRange.start, end))
+  )
+  const endIndex = tagText.match(/(?<=\S)\s*.$/)!.index!
+  const itemsRange = ast.nodes.map(
+    ({ start }, index) =>
+      new Range(
+        positionOffset(tagRange.start, start),
+        positionOffset(tagRange.start, index === ast.nodes.length - 1 ? endIndex : ast.nodes[index + 1].start)
+      )
   )
   return {
     tagRange,
@@ -367,8 +368,8 @@ export function getNearBracketAttr(tagRange: Range, position: Position) {
     type,
     index,
     ast,
-    attr,
-    attrRange,
+    attrsRange,
+    itemsRange,
   } as const
 }
 
@@ -376,8 +377,8 @@ export function getNearBracketAttr(tagRange: Range, position: Position) {
 export async function selectBracketAttrs() {
   const editor = window.activeTextEditor
   if (!editor) return
-  let actives = editor.selections.map(({ active }) => active)
-  if (!actives.length) return
+  let selections = editor.selections
+  if (!selections.length) return
   await commands.executeCommand('editor.action.selectToBracket')
   {
     // 选中空括号
@@ -395,19 +396,32 @@ export async function selectBracketAttrs() {
       await commands.executeCommand('editor.action.selectToBracket')
     }
   }
-  actives = actives.filter((active) =>
+  selections = selections.filter(({ active }) =>
     editor.selections.some((selection) => !selection.isEmpty && selection.contains(active))
   )
   const positions = editor.selections.flatMap(({ start, end }) => [start, end])
-  let attrs = actives.flatMap((active) => {
-    const position = getNearPosition(active, positions)
-    const selection = editor.selections.find(({ start, end }) => start.isEqual(position) || end.isEqual(position))!
-    const attr = getNearBracketAttr(selection, active)
-    return attr?.attr ? [attr] : []
+  let attrs = selections.flatMap((selection) => {
+    const position = getNearPosition(selection.active, positions)
+    const tagRange = editor.selections.find(({ start, end }) => start.isEqual(position) || end.isEqual(position))!
+    const attr = getNearBracketAttr(tagRange, selection.active)
+    if (!attr?.type) {
+      return []
+    }
+    if (selection.isEmpty) {
+      return [attr]
+    }
+    return attr.attrsRange
+      .flatMap((range, index) => (range.intersection(selection) ? [index] : []))
+      .map((index) => ({
+        ...attr,
+        index,
+      }))
   })
   if (!attrs.length) return
-  attrs = filterRangeList(attrs, ({ attrRange }) => attrRange).reverse()
-  editor.selections = attrs.map(({ attrRange }) => new Selection(attrRange.start, attrRange.end))
+  attrs = filterRangeList(attrs, ({ attrsRange, index }) => attrsRange[index]).reverse()
+  editor.selections = attrs.map(
+    ({ itemsRange, index }) => new Selection(itemsRange[index].start, itemsRange[index].end)
+  )
   return attrs
 }
 
@@ -432,12 +446,12 @@ export function selectBracketAttrs_lastExpand(attrs: Awaited<ReturnType<typeof s
     return _index === -1 ? [] : [_index]
   })
   if (indexs.length) {
-    window.activeTextEditor!.selections = attrs.map(({ attrRange, tagRange }, index) => {
-      let start = attrRange.start
-      if (indexs.includes(index)) {
-        start = positionOffset(tagRange.start, attrs[index].ast.nodes[attrs[index].index - 1].end)
+    window.activeTextEditor!.selections = attrs.map(({ tagRange, itemsRange, index, ast }, i) => {
+      let { start, end } = itemsRange[index]
+      if (indexs.includes(i)) {
+        start = positionOffset(tagRange.start, ast.nodes[index - 1].end)
       }
-      return new Selection(start, attrRange.end)
+      return new Selection(start, end)
     })
   }
 }

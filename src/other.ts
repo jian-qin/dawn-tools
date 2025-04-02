@@ -130,7 +130,7 @@ commands.registerCommand('dawn-tools.other.json.copy', async () => {
   if (!attrs?.length) return
   selectBracketAttrs_lastExpand(attrs)
   const delimiter = attrs.find(({ ast }) => ast.nodes.length > 1)?.ast.delimiter || ','
-  const value = attrs.reduce((text, { attr }) => text + attr.text + delimiter, '')
+  const value = attrs.reduce((text, { ast, index }) => text + ast.nodes[index].text + delimiter, '')
   env.clipboard.writeText(value)
 })
 
@@ -147,7 +147,7 @@ commands.registerCommand(
   'dawn-tools.other.json.paste',
   (() => {
     const _fn = (
-      { tagRange, tagText, ast, attr, index, type }: NonNullable<ReturnType<typeof getNearBracketAttr>>,
+      { tagRange, tagText, ast, index, type }: NonNullable<ReturnType<typeof getNearBracketAttr>>,
       texts: string[],
       delimiter: string
     ) => {
@@ -169,8 +169,9 @@ commands.registerCommand(
         end: number
       }
       let text = texts.join(air)
-      if (attr) {
+      if (type) {
         // 有属性
+        const attr = ast.nodes[index]
         if (index === 0 && type === 'start') {
           // 第一个属性
           editOffset = {
