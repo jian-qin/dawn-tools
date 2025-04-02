@@ -90,7 +90,7 @@ commands.registerCommand(
         end: number
       }
       let text = air + texts.join(air)
-      if (attr) {
+      if (type) {
         // 有属性
         if (index === 0 && type === 'start') {
           // 第一个属性

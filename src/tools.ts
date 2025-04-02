@@ -146,7 +146,10 @@ export function getHtmlTagRange(position: Position) {
     if (afterPosition) break
     position = beforePosition
   } while (true)
-  return new Range(beforePosition, afterPosition)
+  const range = new Range(beforePosition, afterPosition)
+  if (range.contains(position)) {
+    return range
+  }
 }
 
 // 获取html标签的ast语法树
@@ -214,9 +217,16 @@ export function getNearHtmlAttr(position: Position) {
   const min = Math.min(...startOffsets, ...endOffsets)
   const type = startOffsets.includes(min) ? 'start' : 'end'
   const index = (type === 'start' ? startOffsets : endOffsets).indexOf(min)
-  const attrRange = new Range(
-    positionOffset(tagRange.start, (ast.attributes[index - 1] || ast.openStart).endPosition + 1),
-    positionOffset(tagRange.start, ast.attributes[index].endPosition + 1)
+  const attrsRange = ast.attributes.map(
+    ({ startPosition, endPosition }) =>
+      new Range(positionOffset(tagRange.start, startPosition), positionOffset(tagRange.start, endPosition + 1))
+  )
+  const itemsRange = ast.attributes.map(
+    ({ endPosition }, index) =>
+      new Range(
+        positionOffset(tagRange.start, (ast.attributes[index - 1] || ast.openStart).endPosition + 1),
+        positionOffset(tagRange.start, endPosition + 1)
+      )
   )
   return {
     tagRange,
@@ -225,7 +235,8 @@ export function getNearHtmlAttr(position: Position) {
     index,
     ast,
     attr: ast.attributes[index],
-    attrRange,
+    attrsRange,
+    itemsRange,
   } as const
 }
 
@@ -235,11 +246,25 @@ export function selectHtmlAttrs() {
   if (!selections.length) return
   let attrs = selections.flatMap((selection) => {
     const attr = getNearHtmlAttr(selection.active)
-    return attr?.attr ? [attr] : []
+    if (!attr?.type) {
+      return []
+    }
+    if (selection.isEmpty) {
+      return [attr]
+    }
+    return attr.attrsRange
+      .flatMap((range, index) => (range.intersection(selection) ? [index] : []))
+      .map((index) => ({
+        ...attr,
+        index,
+        attr: attr.ast.attributes[index],
+      }))
   })
   if (!attrs.length) return
-  attrs = filterRangeList(attrs, ({ attrRange }) => attrRange)
-  window.activeTextEditor!.selections = attrs.map(({ attrRange }) => new Selection(attrRange.start, attrRange.end))
+  attrs = filterRangeList(attrs, ({ attrsRange, index }) => attrsRange[index])
+  window.activeTextEditor!.selections = attrs.map(
+    ({ itemsRange, index }) => new Selection(itemsRange[index].start, itemsRange[index].end)
+  )
   return attrs
 }
 
