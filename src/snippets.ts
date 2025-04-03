@@ -1,5 +1,5 @@
-import { commands, window, env } from 'vscode'
-import { getIndentationMode, getLineIndent } from './tools'
+import { commands, window, env, Selection } from 'vscode'
+import { getIndentationMode, getLineIndent, positionOffset } from './tools'
 import { selectionsHistory } from './store'
 
 // 插入console.log(选中的字符 || 光标所在位置的单词 || 剪贴板的内容)
@@ -14,8 +14,14 @@ commands.registerCommand('dawn-tools.snippets.log', async () => {
     await editor.edit((editBuilder) => {
       inserts.forEach(({ active }) => editBuilder.insert(active, `console.log(${text})`))
     })
-    editor.selections = editor.selections.filter(({ isEmpty }) => !isEmpty)
+    if (inserts.length === editor.selections.length) {
+      editor.selections = inserts.map(
+        ({ active }) => new Selection(positionOffset(active, 12), positionOffset(active, 12 + text.length))
+      )
+      return
+    }
   }
+  editor.selections = editor.selections.filter(({ isEmpty }) => !isEmpty)
   // 选中的字符 || 光标所在位置的单词
   const texts = editor.selections.map((selection) => {
     const text = editor.document.getText(selection)

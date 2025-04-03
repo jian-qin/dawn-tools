@@ -429,7 +429,7 @@ export async function selectBracketAttrs() {
 export function selectBracketAttrs_lastExpand(attrs: Awaited<ReturnType<typeof selectBracketAttrs>>) {
   if (!attrs?.length) return
   let indexs = attrs.flatMap(({ index, ast }, i) => (ast.nodes.length > 1 && ast.nodes.length - 1 === index ? [i] : []))
-  const getFirstIndex = (_index: number) => {
+  const getFirstIndex = (_index: number): number => {
     const firstIndex = attrs.findIndex(
       ({ tagRange, index }) => tagRange.isEqual(attrs[_index].tagRange) && index === attrs[_index].index - 1
     )
