@@ -100,6 +100,11 @@
         "when": "editorTextFocus"
       },
       {
+        "key": "ctrl+shift+alt+o",
+        "command": "dawn-tools.html.attr.closed",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "alt+q",
         "command": "dawn-tools.snippets.log",
         "when": "editorTextFocus"

@@ -181,3 +181,42 @@ commands.registerCommand('dawn-tools.html.attr.move', async () => {
   await editor.edit((editBuilder) => selections.forEach((selection) => editBuilder.delete(selection)))
   commands.executeCommand('dawn-tools.html.attr.paste', text)
 })
+
+// 光标所在标签切换自闭合标签
+commands.registerCommand('dawn-tools.html.attr.closed', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  let attrs = editor.selections.flatMap(({ active }) => {
+    const attr = getNearHtmlAttr(active)
+    return attr ? [attr] : []
+  })
+  if (!attrs.length) return
+  attrs = filterRangeList(attrs, ({ tagRange }) => tagRange)
+  editor.edit((editBuilder) =>
+    attrs.forEach(({ ast, tagRange }) => {
+      const isSingleLine = tagIsSingleLine(ast)
+      const tagEnd = new Range(
+        positionOffset(
+          tagRange.start,
+          isSingleLine ? (ast.attributes.at(-1) || ast.openStart).endPosition + 1 : ast.openEnd.startPosition
+        ),
+        positionOffset(tagRange.start, ast.openEnd.endPosition + 1)
+      )
+      const tagClose = ast.openStart.content.replace('<', '</') + '>'
+      if (ast.selfClosing) {
+        // 自闭合标签
+        editBuilder.replace(tagEnd, '>' + tagClose)
+      } else {
+        // 一般标签
+        const range = new Range(tagRange.end, editor.document.positionAt(editor.document.getText().length - 1))
+        const index = editor.document.getText(range).indexOf(tagClose)
+        if (index !== -1) {
+          editBuilder.replace(
+            new Range(tagEnd.start, positionOffset(tagRange.end, index + tagClose.length)),
+            `${isSingleLine ? ' ' : ''}/>`
+          )
+        }
+      }
+    })
+  )
+})

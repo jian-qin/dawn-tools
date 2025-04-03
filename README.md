@@ -24,6 +24,8 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + shift + x` Move the attributes of the previous cursor's tab to the current cursor's tab
 
+- `ctrl + shift + alt + o` Toggles the label the cursor is on to a self-closing label
+
 ### js/ts
 
 - `alt + b` Format the contents of the parentheses ((), [], {}, <>) where the cursor is placed as a multi-line/single line
