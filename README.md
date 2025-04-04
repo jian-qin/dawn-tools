@@ -58,6 +58,8 @@ English | [简体中文](./README.zh-CN.md)
 
 - `alt + g` Replace the English symbols nearest the cursor with Chinese symbols
 
+- `shift + alt + v` Paste the word as a hump
+
 - `alt + backspace` Delete the word closest to the cursor
 
 - `alt + delete` Delete the whitespace closest to the cursor

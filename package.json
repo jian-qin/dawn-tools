@@ -127,6 +127,11 @@
         "args": "toCN"
       },
       {
+        "key": "shift+alt+v",
+        "command": "dawn-tools.other.word.paste.hump",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "alt+backspace",
         "command": "dawn-tools.other.word.delete",
         "when": "editorTextFocus"

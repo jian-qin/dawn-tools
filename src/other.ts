@@ -67,6 +67,34 @@ commands.registerCommand('dawn-tools.other.symbol', async (mode: 'toEN' | 'toCN'
   )
 })
 
+// 以驼峰方式粘贴单词
+commands.registerCommand('dawn-tools.other.word.paste.hump', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  let value = (await env.clipboard.readText()).trim()
+  if (!value) return
+  const matchs = getNearMatchs(/\w+/g)
+  if (!matchs) return
+  value = value.replace(/^./, (val) => val.toUpperCase())
+  editor.edit((editBuilder) =>
+    editor.selections.forEach((selection, index) => {
+      let { range, text } = matchs[index]
+      if (!range.contains(selection)) return
+      const base = editor.document.offsetAt(range.start)
+      const start = editor.document.offsetAt(selection.start)
+      const end = editor.document.offsetAt(selection.end)
+      text = text
+        .replace(
+          new RegExp(`^(.{${start - base}}).{${end - start}}(.?)`),
+          (_, $1: string, $2: string) => $1 + value + $2.toUpperCase()
+        )
+        .replace(/^./, (val) => val.toLowerCase())
+      editBuilder.replace(range, text)
+    })
+  )
+  editor.selections = editor.selections.map(({ start }) => new Selection(start, start))
+})
+
 // 删除光标最近的单词
 commands.registerCommand('dawn-tools.other.word.delete', async () => {
   const matchs = getNearMatchs(/\w+/g)
@@ -111,7 +139,7 @@ commands.registerCommand(
     }
     return async () => {
       const editor = window.activeTextEditor
-      if (!editor?.selections.length) return
+      if (!editor?.selection) return
       await commands.executeCommand('editor.action.selectToBracket')
       const selections = filterRangeList([...editor.selections])
       if (!selections.length) return
@@ -223,7 +251,7 @@ commands.registerCommand(
     }
     return async (text?: string) => {
       const editor = window.activeTextEditor
-      if (!editor?.selections.length) return
+      if (!editor?.selection) return
       text ??= (await env.clipboard.readText()).trim()
       if (!text) return
       let actives = editor.selections.map(({ active }) => active)

@@ -44,7 +44,7 @@ commands.registerCommand(
     }
     return async () => {
       const editor = window.activeTextEditor
-      if (!editor?.selections.length) return
+      if (!editor?.selection) return
       const tagRanges = filterRangeList(
         editor.selections.map((selection) => getHtmlTagRange(selection.active)).filter(Boolean) as Range[]
       )
@@ -140,7 +140,7 @@ commands.registerCommand(
     }
     return async (text?: string) => {
       const editor = window.activeTextEditor
-      if (!editor?.selections.length) return
+      if (!editor?.selection) return
       text ??= (await env.clipboard.readText()).trim()
       if (!text) return
       const attrs = editor.selections.flatMap((selection) => {

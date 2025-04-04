@@ -5,7 +5,7 @@ import { selectionsHistory } from './store'
 // 插入console.log(选中的字符 || 光标所在位置的单词 || 剪贴板的内容)
 commands.registerCommand('dawn-tools.snippets.log', async () => {
   const editor = window.activeTextEditor
-  if (!editor?.selections.length) return
+  if (!editor?.selection) return
   // 剪贴板的内容
   await commands.executeCommand('editor.action.addSelectionToNextFindMatch')
   const inserts = editor.selections.filter(({ isEmpty }) => isEmpty)

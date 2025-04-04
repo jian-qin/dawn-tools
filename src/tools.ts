@@ -269,7 +269,7 @@ export function selectHtmlAttrs() {
 // 正则匹配光标最近的匹配项
 export function getNearMatchs(reg: RegExp) {
   const editor = window.activeTextEditor
-  if (!editor?.selections.length) return
+  if (!editor?.selection) return
   const results = [...editor.document.getText().matchAll(reg)].map((item) => ({
     text: item[0],
     start: item.index,

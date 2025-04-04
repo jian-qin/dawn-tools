@@ -58,6 +58,8 @@
 
 - `alt + g` 替换光标最近的英文符号为中文符号
 
+- `shift + alt + v` 以驼峰方式粘贴单词
+
 - `alt + backspace` 删除光标最近的单词
 
 - `alt + delete` 删除光标最近的空白字符
