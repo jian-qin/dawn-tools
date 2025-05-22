@@ -349,7 +349,7 @@ export function getNearBracketAttr(tagRange: Range, position: Position) {
   const startOffsets = ast.nodes.map(({ start }) => Math.abs(startIndex - start))
   const endOffsets = ast.nodes.map(({ end }) => Math.abs(startIndex - end))
   const min = Math.min(...startOffsets, ...endOffsets)
-  const type = startOffsets.includes(min) ? 'start' : 'end'
+  const type = endOffsets.includes(min) ? 'end' : 'start'
   const index = (type === 'start' ? startOffsets : endOffsets).indexOf(min)
   const attrsRange = ast.nodes.map(
     ({ start, end }) => new Range(positionOffset(tagRange.start, start), positionOffset(tagRange.start, end))
