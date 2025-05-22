@@ -122,18 +122,27 @@ commands.registerCommand(
       const editor = window.activeTextEditor!
       const text = editor.document.getText(range)
       const ast = getBracketAst(text)
-      if (!ast?.nodes.length) return
+      if (!ast) return
+      const baseTab = getLineIndent(range.start.line).text
       const { tab, br } = getIndentationMode()
       let newText = ''
-      if (positionOffset(range.start, ast.nodes[0].start).line !== range.start.line) {
-        // 换行的缩进-减少
-        newText = ast.nodes.map(({ text }) => text.replaceAll(br + tab, br)).join(', ')
-        newText = text.at(0) === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
+      if (ast.nodes.length) {
+        if (positionOffset(range.start, ast.nodes[0].start).line !== range.start.line) {
+          // 换行的缩进-减少
+          newText = ast.nodes.map(({ text }) => text.replaceAll(br + tab, br)).join(', ')
+          newText = text.at(0) === '{' ? `{ ${newText} }` : `${text.at(0)}${newText}${text.at(-1)}`
+        } else {
+          // 换行的缩进-增加
+          newText = ast.nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
+          newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
+        }
       } else {
-        // 换行的缩进-增加
-        const baseTab = getLineIndent(range.start.line).text
-        newText = ast.nodes.map(({ text }) => text.replaceAll(br, br + tab)).join(`,${br}${baseTab}${tab}`)
-        newText = `${text.at(0)}${br}${baseTab}${tab}${newText}${br}${baseTab}${text.at(-1)}`
+        // 没有属性
+        if (range.isSingleLine) {
+          newText = `${text.at(0)}${br}${baseTab}${text.at(-1)}`
+        } else {
+          newText = `${text.at(0)}${text.at(-1)}`
+        }
       }
       return newText
     }
