@@ -82,7 +82,7 @@ commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
     const has = () => {
       const offset = editor.selection.active.line
       const min = Math.max(offset + Math.min(...offsets), 0)
-      const max = Math.min(offset + Math.max(...offsets) + 1, editor.document.lineCount)
+      const max = Math.min(offset + Math.max(...offsets), editor.document.lineCount - 1)
       return editor.document.getText(new Range(min, 0, max, 0)).includes(value)
     }
     // 复制的路径是vue文件、或者当前编辑器是vue文件、或者当前文件已经导入过@（光标前后范围查找）
@@ -101,7 +101,7 @@ commands.registerCommand('dawn-tools.file.copy.path.paste', async () => {
     await commands.executeCommand('editor.action.insertLineAfter')
   }
   const nextLine = editor.selection.active.line + 1
-  if (nextLine <= editor.document.lineCount) {
+  if (nextLine < editor.document.lineCount) {
     const { text: lineText, isEmptyOrWhitespace } = editor.document.lineAt(nextLine)
     if (!isEmptyOrWhitespace && !require_reg.test(lineText) && !import_reg.test(lineText)) {
       text += getIndentationMode().br + getLineIndent(nextLine).text
