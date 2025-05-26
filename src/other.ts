@@ -73,13 +73,21 @@ commands.registerCommand('dawn-tools.other.word.paste.hump', async () => {
   if (!editor?.selection) return
   let value = (await env.clipboard.readText()).trim()
   if (!value) return
-  const matchs = getNearMatchs(/\w+/g)
-  if (!matchs) return
-  value = value.replace(/^./, (val) => val.toUpperCase())
-  editor.edit((editBuilder) =>
+  const matchs = getNearMatchs(/\w+/g) || []
+  value = value.replace(/[\W]+(\w)/g, (_, p1) => p1.toUpperCase()).replace(/^\w/, (val) => val.toUpperCase())
+  await editor.edit((editBuilder) =>
     editor.selections.forEach((selection, index) => {
-      let { range, text } = matchs[index]
-      if (!range.contains(selection)) return
+      let { range, text } = matchs[index] || {
+        range: selection,
+        text: editor.document.getText(selection),
+      }
+      if (!range.contains(selection)) {
+        editBuilder.replace(
+          selection,
+          value.replace(/^./, (val) => val.toLocaleLowerCase())
+        )
+        return
+      }
       const base = editor.document.offsetAt(range.start)
       const start = editor.document.offsetAt(selection.start)
       const end = editor.document.offsetAt(selection.end)
@@ -92,7 +100,7 @@ commands.registerCommand('dawn-tools.other.word.paste.hump', async () => {
       editBuilder.replace(range, text)
     })
   )
-  editor.selections = editor.selections.map(({ start }) => new Selection(start, start))
+  editor.selections = getNearMatchs(/\w+/g)?.map(({ range }) => new Selection(range.end, range.end)) || []
 })
 
 // 删除光标最近的单词
