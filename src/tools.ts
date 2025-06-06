@@ -103,7 +103,6 @@ export function getHtmlStartIndex(position: Position) {
   const index = document.offsetAt(position) + 1
   if (index < 1) return
   const text = document.getText().substring(0, index)
-  if (text.at(-1) === '<') return position
   const matchArr = text.match(/<\w+/g)
   if (!matchArr) return
   const matchIndex = text.lastIndexOf(matchArr.at(-1) as string)
