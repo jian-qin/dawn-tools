@@ -210,12 +210,9 @@ commands.registerCommand('dawn-tools.html.attr.closed', async () => {
         // 一般标签
         const range = new Range(tagRange.end, editor.document.positionAt(editor.document.getText().length - 1))
         const index = editor.document.getText(range).indexOf(tagClose)
-        if (index !== -1) {
-          editBuilder.replace(
-            new Range(tagEnd.start, positionOffset(tagRange.end, index + tagClose.length)),
-            `${isSingleLine ? ' ' : ''}/>`
-          )
-        }
+        if (index === -1) return
+        isSingleLine && editBuilder.insert(tagEnd.start, ' ')
+        editBuilder.replace(new Range(tagEnd.start, positionOffset(tagRange.end, index + tagClose.length)), '/>')
       }
     })
   )
