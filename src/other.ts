@@ -334,3 +334,19 @@ commands.registerCommand('dawn-tools.other.json.content', async () => {
     return new Selection(start.translate(0, 1), end.translate(0, -1))
   })
 })
+
+// 选中光标所在括号的上层括号
+commands.registerCommand('dawn-tools.other.json.expand', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  await commands.executeCommand('editor.action.selectToBracket')
+  editor.selections = editor.selections.map((selection) => {
+    let position = positionOffset(selection.end, 1)
+    const newEndText = editor.document.getText(new Range(selection.end, position))
+    if ([')', ']', '}', '>'].includes(newEndText)) {
+      position = selection.end
+    }
+    return new Selection(position, position)
+  })
+  await commands.executeCommand('editor.action.selectToBracket')
+})

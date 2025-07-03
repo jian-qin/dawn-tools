@@ -290,7 +290,7 @@ export function getNearMatchs(reg: RegExp) {
 export function getBracketAst(text: string) {
   if (!['(', '[', '{', '<'].includes(text[0])) return
   let delimiter = ','
-  if (!text.replace(/^.(.+).$/s, '$1').trim()) {
+  if (!text.replace(/^.(.*).$/s, '$1').trim()) {
     return { text, delimiter, nodes: [] }
   }
   let _text = ''
@@ -383,14 +383,18 @@ export async function selectBracketAttrs() {
     // 选中空括号
     const indexs = editor.selections
       .map((selection) => editor.document.getText(selection))
-      .flatMap((text, index) => (text && !text.replace(/^.(.+).$/s, '$1').trim() ? [index] : []))
+      .flatMap((text, index) => (text && !text.replace(/^.(.*).$/s, '$1').trim() ? [index] : []))
     if (indexs.length) {
       editor.selections = editor.selections.map((selection, index) => {
-        if (indexs.includes(index)) {
-          const position = positionOffset(selection.end, 1)
-          return new Selection(position, position)
+        if (!indexs.includes(index)) {
+          return selection
         }
-        return selection
+        let position = positionOffset(selection.end, 1)
+        const newEndText = editor.document.getText(new Range(selection.end, position))
+        if ([')', ']', '}', '>'].includes(newEndText)) {
+          position = selection.end
+        }
+        return new Selection(position, position)
       })
       await commands.executeCommand('editor.action.selectToBracket')
     }
