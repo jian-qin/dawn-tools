@@ -1,5 +1,4 @@
 import { commands, window, Range, Selection, Position, workspace, EndOfLine } from 'vscode'
-import { parser } from 'posthtml-parser'
 import { tokenize, constructTree } from 'hyntax'
 import { createSourceFile, ScriptTarget } from 'typescript'
 
@@ -111,10 +110,10 @@ export function getHtmlStartIndex(position: Position) {
 }
 
 // 获取标签结束位置的下标
-export function getHtmlEndIndex(beforePosition: Position) {
+export function getHtmlEndIndex(startPosition: Position) {
   const document = window.activeTextEditor?.document
   if (!document) return
-  const beforeIndex = document.offsetAt(beforePosition)
+  const beforeIndex = document.offsetAt(startPosition)
   const text = document.getText().substring(beforeIndex)
   const reg = />/g
   let afterIndex
@@ -122,10 +121,12 @@ export function getHtmlEndIndex(beforePosition: Position) {
     const match = reg.exec(text)
     if (!match) return
     const tag = text.substring(0, match.index + 1)
-    // 是否合法的 html 标签
-    const ast: any = parser(tag)
-    // 开始标签匹配失败
-    if (!ast[0]?.tag) continue
+    try {
+      if (!getHtmlAst(tag).isFullTag) continue
+    } catch (e) {
+      // 解析错误，可能是标签不完整或语法错误
+      continue
+    }
     afterIndex = beforeIndex + match.index + 1
     break
   } while (reg.lastIndex < text.length)
@@ -135,20 +136,28 @@ export function getHtmlEndIndex(beforePosition: Position) {
 
 // 获取标签整体范围
 export function getHtmlTagRange(position: Position) {
-  // 循环匹配标签位置
-  let beforePosition: ReturnType<typeof getHtmlStartIndex>
-  let afterPosition: ReturnType<typeof getHtmlEndIndex>
-  do {
-    beforePosition = getHtmlStartIndex(position)
-    if (!beforePosition) return
-    afterPosition = getHtmlEndIndex(beforePosition)
-    if (afterPosition) break
-    position = beforePosition
-  } while (true)
-  const range = new Range(beforePosition, afterPosition)
+  const startPosition = getHtmlStartIndex(position)
+  if (!startPosition) return
+  const endPosition = getHtmlEndIndex(startPosition)
+  if (!endPosition) return
+  const range = new Range(startPosition, endPosition)
   if (range.contains(position)) {
     return range
   }
+}
+
+// 获取标签开始标签的范围
+export function getHtmlTagStartRange(position: Position) {
+  const tagRange = getHtmlTagRange(position)
+  if (!tagRange) return
+  const editor = window.activeTextEditor!
+  const tagText = editor.document.getText(tagRange)
+  const ast = getHtmlAst(tagText)
+  if (!ast.openStart) return
+  return new Range(
+    positionOffset(tagRange.start, ast.openStart.startPosition),
+    positionOffset(tagRange.start, ast.openEnd.endPosition + 1)
+  )
 }
 
 // 获取html标签的ast语法树
@@ -157,7 +166,7 @@ export function getHtmlAst(tag: string) {
   const openStartOldLen = ast.openStart.content.length
   ast.openStart.content = ast.openStart.content.trimEnd()
   ast.openStart.endPosition -= openStartOldLen - ast.openStart.content.length
-  ast.selfClosing = ast.openEnd.content[0] === '/'
+  ast.isSingleTag = ast.openEnd.content[0] === '/'
   ast.attributes ||= []
   ast.attributes = ast.attributes.flatMap((attr: any) => {
     const keyOldLen = attr.key.content.length
@@ -179,6 +188,7 @@ export function getHtmlAst(tag: string) {
       : []
   })
   ast.tag = tag
+  ast.isFullTag = ast.selfClosing || ast.isSingleTag || !!ast.close
   interface Attribute {
     content: string // 内容
     startPosition: number // 开始位置
@@ -187,6 +197,8 @@ export function getHtmlAst(tag: string) {
   return ast as {
     tag: string // 标签名
     selfClosing: boolean // 是否自闭合标签
+    isSingleTag: boolean // 是否单标签
+    isFullTag: boolean // 是否完整标签
     openStart: Attribute // 标签开始
     openEnd: Attribute // 标签结束
     attributes: Attribute[] // 标签属性列表
@@ -194,15 +206,17 @@ export function getHtmlAst(tag: string) {
 }
 
 // 判断标签是否单行
-export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>) {
+export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>, attrType: 'start' | 'end' = 'start') {
   const start = ast.openStart.endPosition + 1
-  const end = ast.attributes.length ? ast.attributes[0].startPosition : ast.openEnd.startPosition
+  const end = ast.attributes.length
+    ? ast.attributes.at(attrType === 'start' ? 0 : -1)!.startPosition
+    : ast.openEnd.startPosition
   return !/\r|\n/.test(ast.tag.slice(start, end))
 }
 
 // 获取光标最近的标签属性
 export function getNearHtmlAttr(position: Position) {
-  const tagRange = getHtmlTagRange(position)
+  const tagRange = getHtmlTagStartRange(position)
   if (!tagRange) return
   const editor = window.activeTextEditor!
   const tagText = editor.document.getText(tagRange)

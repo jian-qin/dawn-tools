@@ -2,6 +2,7 @@ import { commands, window, Selection, env, Range } from 'vscode'
 import { selectionsHistory } from './store'
 import {
   getHtmlTagRange,
+  getHtmlTagStartRange,
   filterRangeList,
   getIndentationMode,
   tagIsSingleLine,
@@ -38,7 +39,7 @@ commands.registerCommand(
           const attrStr = ast.attributes.map((attr) => attr.content.replaceAll(br + tab, br)).join(' ')
           newTag += ` ${attrStr}`
         }
-        newTag += `${ast.selfClosing ? ' ' : ''}${end}`
+        newTag += `${ast.isSingleTag ? ' ' : ''}${end}`
       }
       return newTag
     }
@@ -46,7 +47,7 @@ commands.registerCommand(
       const editor = window.activeTextEditor
       if (!editor?.selection) return
       const tagRanges = filterRangeList(
-        editor.selections.map((selection) => getHtmlTagRange(selection.active)).filter(Boolean) as Range[]
+        editor.selections.map((selection) => getHtmlTagStartRange(selection.active)).filter(Boolean) as Range[]
       )
       if (!tagRanges.length) return
       editor.selections = tagRanges.map((range) => new Selection(range.start, range.end))
@@ -107,7 +108,7 @@ commands.registerCommand(
             start: attr.endPosition + 1,
             end: ast.openEnd.startPosition,
           }
-          text = isSingleLine ? `${text}${ast.selfClosing ? ' ' : ''}` : `${text}${br}${baseTab}`
+          text = isSingleLine ? `${text}${ast.isSingleTag ? ' ' : ''}` : `${text}${br}${baseTab}`
         } else {
           // 中间的属性
           editOffset =
@@ -128,7 +129,7 @@ commands.registerCommand(
           start: ast.openStart.endPosition + 1,
           end: ast.openEnd.startPosition,
         }
-        text = isSingleLine ? `${text}${ast.selfClosing ? ' ' : ''}` : `${text}${br}${baseTab}`
+        text = isSingleLine ? `${text}${ast.isSingleTag ? ' ' : ''}` : `${text}${br}${baseTab}`
       }
       return {
         range: new Range(
@@ -186,15 +187,13 @@ commands.registerCommand('dawn-tools.html.attr.move', async () => {
 commands.registerCommand('dawn-tools.html.attr.closed', async () => {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
-  let attrs = editor.selections.flatMap(({ active }) => {
-    const attr = getNearHtmlAttr(active)
-    return attr ? [attr] : []
-  })
-  if (!attrs.length) return
-  attrs = filterRangeList(attrs, ({ tagRange }) => tagRange)
+  let tagRanges = editor.selections.map(({ active }) => getHtmlTagRange(active)).filter(Boolean) as Range[]
+  if (!tagRanges.length) return
+  tagRanges = filterRangeList(tagRanges)
   editor.edit((editBuilder) =>
-    attrs.forEach(({ ast, tagRange }) => {
-      const isSingleLine = tagIsSingleLine(ast)
+    tagRanges.forEach((tagRange) => {
+      const ast = getHtmlAst(editor.document.getText(tagRange))
+      const isSingleLine = tagIsSingleLine(ast, 'end')
       const tagEnd = new Range(
         positionOffset(
           tagRange.start,
@@ -203,16 +202,21 @@ commands.registerCommand('dawn-tools.html.attr.closed', async () => {
         positionOffset(tagRange.start, ast.openEnd.endPosition + 1)
       )
       const tagClose = ast.openStart.content.replace('<', '</') + '>'
-      if (ast.selfClosing) {
+      if (ast.isSingleTag) {
         // 自闭合标签
         editBuilder.replace(tagEnd, '>' + tagClose)
       } else {
         // 一般标签
-        const range = new Range(tagRange.end, editor.document.positionAt(editor.document.getText().length - 1))
-        const index = editor.document.getText(range).indexOf(tagClose)
-        if (index === -1) return
-        isSingleLine && editBuilder.insert(tagEnd.start, ' ')
-        editBuilder.replace(new Range(tagEnd.start, positionOffset(tagRange.end, index + tagClose.length)), '/>')
+        let air = ' '
+        if (ast.openEnd.startPosition - ast.openStart.endPosition === 1) {
+          // 空属性标签会被自动补全影响
+          editBuilder.insert(tagEnd.start, ' ')
+          air = ''
+        }
+        if (!isSingleLine) {
+          air = ''
+        }
+        editBuilder.replace(new Range(tagEnd.start, tagRange.end), air + '/>')
       }
     })
   )

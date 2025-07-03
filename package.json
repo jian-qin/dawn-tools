@@ -206,7 +206,6 @@
   },
   "dependencies": {
     "hyntax": "^1.1.9",
-    "posthtml-parser": "^0.12.0",
     "typescript": "^5.4.5"
   },
   "devDependencies": {
