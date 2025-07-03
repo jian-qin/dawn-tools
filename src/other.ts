@@ -320,3 +320,17 @@ commands.registerCommand('dawn-tools.other.json.move', async () => {
   await editor.edit((editBuilder) => selections.forEach((selection) => editBuilder.delete(selection)))
   commands.executeCommand('dawn-tools.other.json.paste', text)
 })
+
+// 选中光标所在括号的内容
+commands.registerCommand('dawn-tools.other.json.content', async () => {
+  const editor = window.activeTextEditor
+  if (!editor?.selection) return
+  await commands.executeCommand('editor.action.selectToBracket')
+  editor.selections = editor.selections.map((selection) => {
+    const { start, end, isEmpty } = selection
+    if (isEmpty) {
+      return selection
+    }
+    return new Selection(start.translate(0, 1), end.translate(0, -1))
+  })
+})

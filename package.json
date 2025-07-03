@@ -167,6 +167,11 @@
         "when": "editorTextFocus"
       },
       {
+        "key": "ctrl+alt+/",
+        "command": "dawn-tools.other.json.content",
+        "when": "editorTextFocus"
+      },
+      {
         "key": "ctrl+alt+h",
         "command": "dawn-tools.vue.scrollTo",
         "when": "editorTextFocus && editorLangId == 'vue'",

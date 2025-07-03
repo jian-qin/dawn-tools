@@ -38,6 +38,8 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + alt + x` Move the item in the parentheses where the cursor was last placed to the parentheses where the cursor is currently placed
 
+- `ctrl + alt + /` Select the content in the parentheses ((), [], {}, <>) where the cursor is located
+
 ### vue
 
 - `ctrl + alt + h` The currently viewed vue file, scroll to the `template` block
