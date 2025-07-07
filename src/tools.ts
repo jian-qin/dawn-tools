@@ -95,8 +95,8 @@ export function getNearPosition(position: Position, positions: Position[]) {
   return positions[offsetsAbs.indexOf(min)]
 }
 
-// 获取标签开始位置的下标
-export function getHtmlStartIndex(position: Position) {
+// 获取开始标签范围-开始位置
+export function getHtmlStartRange_start(position: Position) {
   const document = window.activeTextEditor?.document
   if (!document) return
   const index = document.offsetAt(position) + 1
@@ -109,8 +109,8 @@ export function getHtmlStartIndex(position: Position) {
   return document.positionAt(matchIndex)
 }
 
-// 获取标签结束位置的下标
-export function getHtmlEndIndex(startPosition: Position) {
+// 获取开始标签范围-结束位置
+export function getHtmlStartRange_end(startPosition: Position) {
   const document = window.activeTextEditor?.document
   if (!document) return
   const beforeIndex = document.offsetAt(startPosition)
@@ -121,12 +121,7 @@ export function getHtmlEndIndex(startPosition: Position) {
     const match = reg.exec(text)
     if (!match) return
     const tag = text.substring(0, match.index + 1)
-    try {
-      if (!getHtmlAst(tag).isFullTag) continue
-    } catch (e) {
-      // 解析错误，可能是标签不完整或语法错误
-      continue
-    }
+    if (!getHtmlAst(tag)?.openEnd) continue
     afterIndex = beforeIndex + match.index + 1
     break
   } while (reg.lastIndex < text.length)
@@ -134,30 +129,75 @@ export function getHtmlEndIndex(startPosition: Position) {
   return document.positionAt(afterIndex)
 }
 
-// 获取标签整体范围
-export function getHtmlTagRange(position: Position) {
-  const startPosition = getHtmlStartIndex(position)
-  if (!startPosition) return
-  const endPosition = getHtmlEndIndex(startPosition)
-  if (!endPosition) return
-  const range = new Range(startPosition, endPosition)
-  if (range.contains(position)) {
-    return range
-  }
+// 获取开始标签范围
+export function getHtmlStartRange(position: Position) {
+  const start = getHtmlStartRange_start(position)
+  if (!start) return
+  const end = getHtmlStartRange_end(start)
+  if (!end) return
+  return new Range(start, end)
 }
 
-// 获取标签开始标签的范围
-export function getHtmlTagStartRange(position: Position) {
-  const tagRange = getHtmlTagRange(position)
-  if (!tagRange) return
-  const editor = window.activeTextEditor!
-  const tagText = editor.document.getText(tagRange)
-  const ast = getHtmlAst(tagText)
-  if (!ast.openStart) return
+// 获取结束标签范围
+export function getHtmlEndRange(startRange: Range) {
+  const document = window.activeTextEditor?.document
+  if (!document) return
+  {
+    const ast = getHtmlAst(document.getText(startRange))
+    if (ast.selfClosing || ast.isSingleTag) {
+      return new Range(positionOffset(startRange.start, ast.openEnd.startPosition), startRange.end)
+    }
+  }
+  const getOpenEnd = (ast: ReturnType<typeof getHtmlAst>) => {
+    if (!ast.children?.length) {
+      return ast
+    }
+    return getOpenEnd(ast.children.at(-1).content)
+  }
+  const beforeIndex = document.offsetAt(startRange.start)
+  let text = document.getText().substring(beforeIndex)
+  const match = text.matchAll(/>/g)
+  match.next() // 跳过第一个匹配
+  let close: ReturnType<typeof getHtmlAst>['close'] | undefined
+  do {
+    const { done, value } = match.next()
+    if (done) return
+    const tag = text.substring(0, value.index + 1)
+    const ast = getHtmlAst(tag)
+    if (ast.close) {
+      close = ast.close
+      break
+    }
+    const end = getOpenEnd(ast)
+    // ast 解析无法正确识别自定义自闭合标签，解决方案：替换为原生的自闭合标签
+    if (end.selfClosing === false && end.openEnd?.content === '/>') {
+      text = text.replace(
+        new RegExp(
+          `(.{${end.openStart.startPosition}}).{${end.openStart.endPosition - end.openStart.startPosition + 1}}`,
+          's'
+        ),
+        (_, $1) => $1 + '<br'.padEnd(end.openStart.content.length, ' ')
+      )
+    }
+  } while (true)
+  if (!close) return
   return new Range(
-    positionOffset(tagRange.start, ast.openStart.startPosition),
-    positionOffset(tagRange.start, ast.openEnd.endPosition + 1)
+    positionOffset(startRange.start, close.startPosition),
+    positionOffset(startRange.start, close.endPosition + 1)
   )
+}
+
+// 获取标签整体范围
+export function getHtmlRange(position: Position) {
+  const start = getHtmlStartRange(position)
+  if (!start) return
+  const end = getHtmlEndRange(start)
+  if (!end) return
+  return {
+    start,
+    end,
+    range: new Range(start.start, end.end),
+  }
 }
 
 // 获取html标签的ast语法树
@@ -188,7 +228,6 @@ export function getHtmlAst(tag: string) {
       : []
   })
   ast.tag = tag
-  ast.isFullTag = ast.selfClosing || ast.isSingleTag || !!ast.close
   interface Attribute {
     content: string // 内容
     startPosition: number // 开始位置
@@ -198,10 +237,11 @@ export function getHtmlAst(tag: string) {
     tag: string // 标签名
     selfClosing: boolean // 是否自闭合标签
     isSingleTag: boolean // 是否单标签
-    isFullTag: boolean // 是否完整标签
     openStart: Attribute // 标签开始
     openEnd: Attribute // 标签结束
     attributes: Attribute[] // 标签属性列表
+    close?: Attribute // 结束标签
+    children?: any[] // 标签子元素
   }
 }
 
@@ -216,7 +256,7 @@ export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>, attrType: 's
 
 // 获取光标最近的标签属性
 export function getNearHtmlAttr(position: Position) {
-  const tagRange = getHtmlTagStartRange(position)
+  const tagRange = getHtmlStartRange(position)
   if (!tagRange) return
   const editor = window.activeTextEditor!
   const tagText = editor.document.getText(tagRange)

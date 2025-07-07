@@ -1,8 +1,8 @@
 import { commands, window, Selection, env, Range } from 'vscode'
 import { selectionsHistory } from './store'
 import {
-  getHtmlTagRange,
-  getHtmlTagStartRange,
+  getHtmlRange,
+  getHtmlStartRange,
   filterRangeList,
   getIndentationMode,
   tagIsSingleLine,
@@ -47,7 +47,7 @@ commands.registerCommand(
       const editor = window.activeTextEditor
       if (!editor?.selection) return
       const tagRanges = filterRangeList(
-        editor.selections.map((selection) => getHtmlTagStartRange(selection.active)).filter(Boolean) as Range[]
+        editor.selections.map((selection) => getHtmlStartRange(selection.active)).filter(Boolean) as Range[]
       )
       if (!tagRanges.length) return
       editor.selections = tagRanges.map((range) => new Selection(range.start, range.end))
@@ -187,7 +187,7 @@ commands.registerCommand('dawn-tools.html.attr.move', async () => {
 commands.registerCommand('dawn-tools.html.attr.closed', async () => {
   const editor = window.activeTextEditor
   if (!editor?.selection) return
-  let tagRanges = editor.selections.map(({ active }) => getHtmlTagRange(active)).filter(Boolean) as Range[]
+  let tagRanges = editor.selections.map(({ active }) => getHtmlRange(active)?.range).filter(Boolean) as Range[]
   if (!tagRanges.length) return
   tagRanges = filterRangeList(tagRanges)
   editor.edit((editBuilder) =>
