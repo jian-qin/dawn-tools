@@ -148,7 +148,7 @@ export function getHtmlEndRange(startRange: Range) {
       return new Range(positionOffset(startRange.start, ast.openEnd.startPosition), startRange.end)
     }
   }
-  const getOpenEnd = (ast: ReturnType<typeof getHtmlAst>) => {
+  const getOpenEnd = (ast: ReturnType<typeof getHtmlAst>): ReturnType<typeof getHtmlAst> => {
     if (!ast.children?.length) {
       return ast
     }
