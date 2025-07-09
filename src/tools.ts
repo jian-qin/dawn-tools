@@ -353,7 +353,8 @@ export function getBracketAst(text: string) {
     // @ts-ignore
     createSourceFile('temp.ts', (_text = newText), ScriptTarget.Latest).statements[0].expression
   if (text[0] === '(') {
-    _nodes = astFn(text).parameters || astFn(`fn${text}`).arguments
+    // 函数形参和实参
+    _nodes = astFn(`${text}=>{}`).parameters || astFn(`fn${text}`).arguments
   } else if (text[0] === '[') {
     _nodes = astFn(text).elements
   } else if (text[0] === '{') {
