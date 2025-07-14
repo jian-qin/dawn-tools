@@ -167,12 +167,12 @@
         "when": "editorTextFocus"
       },
       {
-        "key": "ctrl+alt+/",
+        "key": "ctrl+alt+[",
         "command": "dawn-tools.other.json.content",
         "when": "editorTextFocus"
       },
       {
-        "key": "ctrl+alt+=",
+        "key": "ctrl+alt+]",
         "command": "dawn-tools.other.json.expand",
         "when": "editorTextFocus"
       },
