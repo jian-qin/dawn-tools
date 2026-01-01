@@ -12,6 +12,12 @@ English | [简体中文](./README.zh-CN.md)
 
 - `Copy absolute path` Copy the absolute path of the file
 
+- `ctrl + shift + v` Paste the copied path as an import statement
+
+  - Read before and after the cursor (10 lines), determine the import mode, whether to add a semicolon, whether to add a newline, and whether to replace the @ symbol for vue items
+
+  - `import filename from 'path'`, `const filename = require('path')`
+
 ## Shortcuts
 
 ### html
@@ -19,6 +25,10 @@ English | [简体中文](./README.zh-CN.md)
 - `ctrl + shift + a` Formatting the tab where the cursor is located as a multi-line/single line
 
 - `ctrl + shift + c` Copy the attribute of the tab closest to the cursor in the tab where the cursor is located
+
+- `ctrl + shift + v` Paste the copied tag attribute between the attributes closest to the cursor in the tag where the cursor is located
+
+  - Determine whether the tag is multi-line/single line, whether to add newlines
 
 - `ctrl + shift + d` Delete the attribute of the tab closest to the cursor in the tab where the cursor is located
 
@@ -34,7 +44,9 @@ English | [简体中文](./README.zh-CN.md)
 
 - `ctrl + alt + d` Delete the item in parentheses ((), [], {}, <>) where the cursor is located
 
-- `ctrl + alt + v` Paste after the attribute closest to the cursor in the parentheses where the cursor is located
+- `ctrl + alt + v` Paste the item between the attributes closest to the cursor in the parentheses where the cursor is located
+
+  - Determine whether the parentheses are multi-line/single line, whether to add a comma at the end of the last attribute
 
 - `ctrl + alt + x` Move the item in the parentheses where the cursor was last placed to the parentheses where the cursor is currently placed
 
@@ -67,17 +79,3 @@ English | [简体中文](./README.zh-CN.md)
 - `alt + backspace` Delete the word closest to the cursor
 
 - `alt + delete` Delete the whitespace closest to the cursor
-
-- `ctrl + shift + v` Special paste, formatted according to clipboard contents
-
-  - If `Copy relative path`, `Copy absolute path` copied content
-
-    - Read before and after the cursor (10 lines), determine the import mode, whether to add a semicolon, whether to add a newline, and whether to replace the @ symbol for vue items
-
-    - `import filename from 'path'`, `const filename = require('path')`
-
-  - In the case of `ctrl + shift + c`, `ctrl + shift + d` copied content
-
-    - Paste after the attribute closest to the cursor in the tab where the cursor is located
-
-    - Determine whether the label is multi-line/single line, whether to add newlines or not
