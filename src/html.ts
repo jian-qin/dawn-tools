@@ -20,7 +20,7 @@ commands.registerCommand(
     const _fn = (tagRange: Range) => {
       const editor = window.activeTextEditor!
       const ast = getHtmlAst(editor.document.getText(tagRange))
-      const end = ast.openEnd.content
+      const end = ast.openEnd!.content
       const { tab, br } = getIndentationMode()
       let newTag = ast.openStart.content
       // 格式化标签
@@ -106,7 +106,7 @@ commands.registerCommand(
           // 最后一个属性
           editOffset = {
             start: attr.endPosition + 1,
-            end: ast.openEnd.startPosition,
+            end: ast.openEnd!.startPosition,
           }
           text = isSingleLine ? `${text}${ast.isSingleTag ? ' ' : ''}` : `${text}${br}${baseTab}`
         } else {
@@ -127,7 +127,7 @@ commands.registerCommand(
         // 无属性
         editOffset = {
           start: ast.openStart.endPosition + 1,
-          end: ast.openEnd.startPosition,
+          end: ast.openEnd!.startPosition,
         }
         text = isSingleLine ? `${text}${ast.isSingleTag ? ' ' : ''}` : `${text}${br}${baseTab}`
       }
@@ -197,9 +197,9 @@ commands.registerCommand('dawn-tools.html.attr.closed', async () => {
       const tagEnd = new Range(
         positionOffset(
           tagRange.start,
-          isSingleLine ? (ast.attributes.at(-1) || ast.openStart).endPosition + 1 : ast.openEnd.startPosition
+          isSingleLine ? (ast.attributes.at(-1) || ast.openStart).endPosition + 1 : ast.openEnd!.startPosition
         ),
-        positionOffset(tagRange.start, ast.openEnd.endPosition + 1)
+        positionOffset(tagRange.start, ast.openEnd!.endPosition + 1)
       )
       const tagClose = ast.openStart.content.replace('<', '</') + '>'
       if (ast.isSingleTag) {
@@ -208,7 +208,7 @@ commands.registerCommand('dawn-tools.html.attr.closed', async () => {
       } else {
         // 一般标签
         let air = ' '
-        if (ast.openEnd.startPosition - ast.openStart.endPosition === 1) {
+        if (ast.openEnd!.startPosition - ast.openStart.endPosition === 1) {
           // 空属性标签会被自动补全影响
           editBuilder.insert(tagEnd.start, ' ')
           air = ''

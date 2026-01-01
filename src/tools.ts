@@ -145,7 +145,7 @@ export function getHtmlEndRange(startRange: Range) {
   {
     const ast = getHtmlAst(document.getText(startRange))
     if (ast.selfClosing || ast.isSingleTag) {
-      return new Range(positionOffset(startRange.start, ast.openEnd.startPosition), startRange.end)
+      return new Range(positionOffset(startRange.start, ast.openEnd!.startPosition), startRange.end)
     }
   }
   const getOpenEnd = (ast: ReturnType<typeof getHtmlAst>): ReturnType<typeof getHtmlAst> => {
@@ -206,7 +206,7 @@ export function getHtmlAst(tag: string) {
   const openStartOldLen = ast.openStart.content.length
   ast.openStart.content = ast.openStart.content.trimEnd()
   ast.openStart.endPosition -= openStartOldLen - ast.openStart.content.length
-  ast.isSingleTag = ast.openEnd.content[0] === '/'
+  ast.isSingleTag = ast.openEnd?.content[0] === '/'
   ast.attributes ||= []
   ast.attributes = ast.attributes.flatMap((attr: any) => {
     const keyOldLen = attr.key.content.length
@@ -238,7 +238,7 @@ export function getHtmlAst(tag: string) {
     selfClosing: boolean // 是否自闭合标签
     isSingleTag: boolean // 是否单标签
     openStart: Attribute // 标签开始
-    openEnd: Attribute // 标签结束
+    openEnd?: Attribute // 标签结束
     attributes: Attribute[] // 标签属性列表
     close?: Attribute // 结束标签
     children?: any[] // 标签子元素
@@ -250,7 +250,7 @@ export function tagIsSingleLine(ast: ReturnType<typeof getHtmlAst>, attrType: 's
   const start = ast.openStart.endPosition + 1
   const end = ast.attributes.length
     ? ast.attributes.at(attrType === 'start' ? 0 : -1)!.startPosition
-    : ast.openEnd.startPosition
+    : ast.openEnd!.startPosition
   return !/\r|\n/.test(ast.tag.slice(start, end))
 }
 
